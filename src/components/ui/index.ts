@@ -1,4 +1,3 @@
-export { Container } from './container'
 export { Button } from './button'
 export { Magnetic } from './magnetic'
 export { Badge } from './badge'

@@ -24,7 +24,7 @@ export function DropdownMenu({
       </Button>
       <div
         className={cn(
-          'absolute left-0 top-[calc(100%+8px)] z-50 min-w-[200px] rounded-xl border border-line bg-surface p-1.5 shadow-2 transition-all ease-nocturne',
+          'absolute left-0 top-[calc(100%+8px)] z-50 min-w-50 rounded-xl border border-line bg-surface p-1.5 shadow-2 transition-all ease-nocturne',
           open
             ? 'pointer-events-auto translate-y-0 opacity-100'
             : 'pointer-events-none -translate-y-1.5 opacity-0',

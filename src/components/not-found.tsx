@@ -3,9 +3,10 @@ import { Link } from '@tanstack/react-router'
 import { ArrowLeftIcon, HouseIcon } from '@phosphor-icons/react'
 import { gsap, useGSAP, SplitText } from '@lib/gsap'
 import { startStorm } from '@components/storm/lightning'
-import { Container, Magnetic } from '@components/ui'
+import { Magnetic } from '@ui'
 import { RainCanvas } from '@components/storm/rain-canvas'
 import { site } from '@config/site'
+import { Container } from './layout'
 
 // Snoopy's writer's block — he keeps starting over.
 const DRAFTS = [
@@ -127,7 +128,7 @@ export function NotFound() {
         data-svg
         viewBox="0 0 100 100"
         aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 z-[12] h-[70vh] w-full"
+        className="pointer-events-none fixed inset-x-0 top-0 z-12 h-[70vh] w-full"
         style={{
           filter: 'drop-shadow(0 0 10px #b39bff) drop-shadow(0 0 24px #8f6bff)',
         }}
@@ -160,7 +161,7 @@ export function NotFound() {
             role="img"
             aria-label="Snoopy the Flying Ace atop his doghouse"
             style={{ backgroundImage: 'url(/snoopy_higher_res.webp)' }}
-            className="mx-auto size-[180px] rounded-2xl bg-cover bg-center bg-no-repeat drop-shadow-[0_0_44px_rgb(143_107_255/0.5)]"
+            className="mx-auto size-45 rounded-2xl bg-cover bg-center bg-no-repeat drop-shadow-[0_0_44px_rgb(143_107_255/0.5)]"
           />
 
           <p
@@ -181,11 +182,11 @@ export function NotFound() {
             </span>
           </h1>
 
-          <p className="mx-auto mt-6 min-h-[6rem] max-w-prose text-lg text-muted">
+          <p className="mx-auto mt-6 min-h-24 max-w-prose text-lg text-muted">
             <span data-type>{FINAL}</span>
             <span
               aria-hidden
-              className="nocturne-caret ml-0.5 inline-block w-[2px] text-violet-300"
+              className="nocturne-caret ml-0.5 inline-block w-0.5 text-violet-300"
             >
               ▋
             </span>

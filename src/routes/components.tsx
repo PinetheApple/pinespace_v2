@@ -25,7 +25,6 @@ import {
   Callout,
   CodeBlock,
   CommandPalette,
-  Container,
   Checkbox,
   Drawer,
   DropdownItem,
@@ -45,7 +44,10 @@ import {
   Tooltip,
   useCommandPalette,
   useToast,
-} from '@components/ui'
+} from '@ui'
+import {
+	Container
+} from '@layout'
 
 export const Route = createFileRoute('/components')({ component: Showcase })
 
@@ -175,7 +177,7 @@ function ShowcaseContent() {
                   value={size}
                   onChange={(e) => setSize(Number(e.target.value))}
                 />
-                <span className="min-w-[42px] font-mono text-[13px] text-violet-300">
+                <span className="min-w-10.5 font-mono text-[13px] text-violet-300">
                   {size}px
                 </span>
               </div>
@@ -227,7 +229,7 @@ function ShowcaseContent() {
 
             <Panel title="Skeleton">
               <SkeletonText lines={3} />
-              <Skeleton className="mt-3 h-[120px]" />
+              <Skeleton className="mt-3 h-30" />
             </Panel>
 
             <Panel title="Accordion" span>
