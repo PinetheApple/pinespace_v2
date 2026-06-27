@@ -45,9 +45,7 @@ import {
   useCommandPalette,
   useToast,
 } from '@ui'
-import {
-	Container
-} from '@layout'
+import { Container, PageLayout } from '@layout'
 
 export const Route = createFileRoute('/components')({ component: Showcase })
 
@@ -96,9 +94,8 @@ function ShowcaseContent() {
   const [page, setPage] = useState(1)
 
   return (
-    <>
+    <PageLayout>
       <ReadingProgress />
-      <div className="fixed inset-0 -z-10 nocturne-grid" />
 
       <header className="border-b border-line py-20">
         <Container>
@@ -121,7 +118,7 @@ function ShowcaseContent() {
         </Container>
       </header>
 
-      <main className="py-14">
+      <section className="py-14">
         <Container>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Panel title="Buttons">
@@ -349,7 +346,7 @@ function ShowcaseContent() {
             </Panel>
           </div>
         </Container>
-      </main>
+      </section>
 
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         <div className="mb-6 flex items-center justify-between">
@@ -386,6 +383,6 @@ function ShowcaseContent() {
       />
 
       <BackToTop />
-    </>
+    </PageLayout>
   )
 }

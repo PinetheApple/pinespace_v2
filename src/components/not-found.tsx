@@ -6,7 +6,7 @@ import { startStorm } from '@components/storm/lightning'
 import { Magnetic } from '@ui'
 import { RainCanvas } from '@components/storm/rain-canvas'
 import { site } from '@config/site'
-import { Container } from './layout'
+import { Container, PageLayout } from './layout'
 
 // Snoopy's writer's block — he keeps starting over.
 const DRAFTS = [
@@ -120,39 +120,40 @@ export function NotFound() {
   )
 
   return (
-    <div ref={scope}>
-      <RainCanvas className="z-0" />
+    <PageLayout>
+      <div ref={scope}>
+        <RainCanvas className="z-0" />
 
-      {/* lightning bolt */}
-      <svg
-        data-svg
-        viewBox="0 0 100 100"
-        aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 z-12 h-[70vh] w-full"
-        style={{
-          filter: 'drop-shadow(0 0 10px #b39bff) drop-shadow(0 0 24px #8f6bff)',
-        }}
-      >
-        <path
-          data-bolt
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth={3}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity={0}
+        {/* lightning bolt */}
+        <svg
+          data-svg
+          viewBox="0 0 100 100"
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 top-0 z-12 h-[70vh] w-full"
+          style={{
+            filter: 'drop-shadow(0 0 10px #b39bff) drop-shadow(0 0 24px #8f6bff)',
+          }}
+        >
+          <path
+            data-bolt
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth={3}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity={0}
+          />
+        </svg>
+
+        {/* lightning flash */}
+        <div
+          data-flash
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-20 opacity-0"
         />
-      </svg>
 
-      {/* lightning flash */}
-      <div
-        data-flash
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-20 opacity-0"
-      />
-
-      <main className="relative z-10 flex min-h-dvh items-center overflow-hidden py-20">
-        <Container data-shake className="text-center">
+        <div className="relative z-10 flex min-h-[calc(100dvh-3.5rem)] items-center overflow-hidden py-20">
+          <Container data-shake className="text-center">
           {/* decorative graphic as a background-image: no broken-image box or
               alt-text flash while the asset loads; drop-shadow still hugs the
               transparent webp's alpha. a11y via role + aria-label. */}
@@ -217,8 +218,9 @@ export function NotFound() {
           <p data-reveal className="mt-12 font-mono text-xs text-faint">
             {site.handle}
           </p>
-        </Container>
-      </main>
-    </div>
+          </Container>
+        </div>
+      </div>
+    </PageLayout>
   )
 }

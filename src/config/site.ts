@@ -6,11 +6,16 @@ export const site = {
   url: 'https://pine.space',
   nav: [
     { label: 'Work', to: '/', hash: 'work' },
-    { label: 'Writing', to: '/blog' },
+    { label: 'Projects', to: '/projects', menu: 'projects' },
+    { label: 'Writing', to: '/blog', menu: 'writing' },
     { label: 'About', to: '/about' },
   ],
   socials: [
-    { label: 'GitHub', href: 'https://github.com/PinetheApple', icon: 'github-logo' },
+    {
+      label: 'GitHub',
+      href: 'https://github.com/PinetheApple',
+      icon: 'github-logo',
+    },
     { label: 'RSS', href: '/rss.xml', icon: 'rss' },
   ],
 } as const

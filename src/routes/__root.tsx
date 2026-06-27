@@ -22,7 +22,7 @@ export const Route = createRootRoute({
         name: 'darkreader-lock',
       },
       {
-        title: 'Pine Space — software & words',
+        title: 'Pine Space',
       },
     ],
     links: [
