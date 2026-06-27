@@ -1,0 +1,34 @@
+# dependencies
+node_modules
+
+# build output
+dist
+dist-ssr
+.output
+.nitro
+.vinxi
+.tanstack
+.wrangler
+
+# generated
+src/routeTree.gen.ts
+
+# env & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# logs & misc
+*.log
+__unconfig*
+todos.json
+.DS_Store
+
+# editor
+.vscode
+.zed
+.idea
+
+# local agent config
+.claude
