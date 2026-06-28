@@ -1,0 +1,34 @@
+---
+title: Designing dark by default
+excerpt: Nocturne is a violet-slate system built for low light, not bolted on after.
+date: 2026-06-04
+tags: [Design]
+---
+
+Most dark modes are a light theme with the lights turned off. Nocturne started dark.
+
+## Surfaces, not colors
+
+The palette is a ladder of elevation — each layer a touch lighter than the one beneath:
+
+- `well` — the deepest recess
+- `base` — the page
+- `surface` — cards and panels
+- `elevated` — hover and popovers
+
+```css
+--color-well: hsl(255 26% 13%);
+--color-base: hsl(255 24% 17%);
+--color-surface: hsl(255 22% 21%);
+--color-elevated: hsl(255 20% 25%);
+```
+
+## One accent, used sparingly
+
+Violet carries every interactive cue — links, focus rings, the active nav state.
+Restraint is what makes the glow read as intentional.
+
+<Callout variant="warning">
+  Contrast still matters in the dark. Body text sits at ~80% lightness, never
+  pure white, to keep long reads comfortable.
+</Callout>

@@ -1,0 +1,36 @@
+---
+title: Why typed routing changed how I build
+excerpt: TanStack Router's typed links catch dead links at compile time.
+date: 2026-06-12
+tags: [TanStack, TypeScript]
+---
+
+The first time a typo in a route path failed my build instead of my users, I was sold.
+
+## Links that can't lie
+
+With TanStack Router, `to` is a union of real routes. A bad path won't type-check:
+
+```tsx
+<Link to="/blgo">Writing</Link>
+//        ^ Type '"/blgo"' is not assignable
+```
+
+Dynamic segments come with typed params too:
+
+```tsx
+<Link to="/blog/$slug" params={{ slug: post.slug }}>
+  {post.title}
+</Link>
+```
+
+## What it buys you
+
+- Rename a route, every broken link lights up red.
+- Params are checked — no more `undefined` in the URL.
+- Autocomplete for every path in the app.
+
+<Callout>
+  The route tree is generated from the filesystem, so the types stay honest
+  without any manual wiring.
+</Callout>

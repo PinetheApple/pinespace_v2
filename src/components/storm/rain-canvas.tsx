@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { mediaMatches, MOTION_REDUCE, POINTER_COARSE } from '@lib/motion'
 import { cn } from '@utils/cn'
 
 type Drop = { x: number; y: number; len: number; speed: number; alpha: number }
@@ -10,11 +11,7 @@ export function RainCanvas({ className }: { className?: string }) {
 
   useEffect(() => {
     // skip on reduced-motion and on touch devices (perf on low-power GPUs)
-    if (
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      window.matchMedia('(pointer: coarse)').matches
-    )
-      return
+    if (mediaMatches(MOTION_REDUCE) || mediaMatches(POINTER_COARSE)) return
 
     const canvas = ref.current
     if (!canvas) return
@@ -43,10 +40,7 @@ export function RainCanvas({ className }: { className?: string }) {
       canvas.width = w * dpr
       canvas.height = h * dpr
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drops = Array.from(
-        { length: Math.round(w * h * DENSITY) },
-        make,
-      )
+      drops = Array.from({ length: Math.round(w * h * DENSITY) }, make)
     }
 
     const tick = () => {

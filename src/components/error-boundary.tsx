@@ -1,11 +1,15 @@
 import { useRef } from 'react'
-import {
-  Link,
-  useRouter,
-  type ErrorComponentProps,
-} from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 import { ArrowClockwiseIcon, HouseIcon } from '@phosphor-icons/react'
 import { gsap, useGSAP, SplitText } from '@lib/gsap'
+import {
+  mediaMatches,
+  MOTION_DESKTOP,
+  MOTION_OK,
+  MOTION_TOUCH,
+  POINTER_FINE,
+} from '@lib/motion'
 import { Magnetic } from '@ui'
 import { site } from '@config/site'
 import { Container, PageLayout } from './layout'
@@ -36,11 +40,7 @@ export function ErrorBoundary({ error, reset }: ErrorComponentProps) {
       if (!root) return
 
       const type = root.querySelector<HTMLElement>('[data-type]')
-      const motionOk = window.matchMedia(
-        '(prefers-reduced-motion: no-preference)',
-      ).matches
-      const fine = window.matchMedia('(pointer: fine)').matches
-      const willType = motionOk && fine
+      const willType = mediaMatches(MOTION_OK) && mediaMatches(POINTER_FINE)
 
       // fill the line statically unless the typewriter will animate it
       if (type) type.textContent = willType ? '' : FINAL
@@ -110,50 +110,44 @@ export function ErrorBoundary({ error, reset }: ErrorComponentProps) {
       const mm = gsap.matchMedia()
 
       // desktop: full experience
-      mm.add(
-        '(prefers-reduced-motion: no-preference) and (pointer: fine)',
-        () => {
-          const snoopy = root.querySelector('[data-snoopy]')
+      mm.add(MOTION_DESKTOP, () => {
+        const snoopy = root.querySelector('[data-snoopy]')
 
-          gsap
-            .timeline({ defaults: { ease: 'power3.out' } })
-            .from('[data-snoopy]', {
-              y: -48,
-              scale: 0.8,
-              rotation: -12,
-              opacity: 0,
-              duration: 0.7,
-            })
-            .from(
-              '[data-reveal]',
-              { y: 20, opacity: 0, duration: 0.6, stagger: 0.08 },
-              '-=0.3',
-            )
-            .add(() => startWobble(snoopy))
+        gsap
+          .timeline({ defaults: { ease: 'power3.out' } })
+          .from('[data-snoopy]', {
+            y: -48,
+            scale: 0.8,
+            rotation: -12,
+            opacity: 0,
+            duration: 0.7,
+          })
+          .from(
+            '[data-reveal]',
+            { y: 20, opacity: 0, duration: 0.6, stagger: 0.08 },
+            '-=0.3',
+          )
+          .add(() => startWobble(snoopy))
 
-          if (type) {
-            const tw = gsap.timeline({ delay: 0.5 })
-            let prev = ''
-            for (const line of TRANSMISSION) {
-              const delta = Math.abs(line.length - prev.length)
-              tw.to(type, {
-                text: { value: line },
-                duration: Math.max(0.4, delta * 0.035),
-                ease: 'none',
-              }).to({}, { duration: 1 })
-              prev = line
-            }
+        if (type) {
+          const tw = gsap.timeline({ delay: 0.5 })
+          let prev = ''
+          for (const line of TRANSMISSION) {
+            const delta = Math.abs(line.length - prev.length)
+            tw.to(type, {
+              text: { value: line },
+              duration: Math.max(0.4, delta * 0.035),
+              ease: 'none',
+            }).to({}, { duration: 1 })
+            prev = line
           }
+        }
 
-          return runAlarm()
-        },
-      )
+        return runAlarm()
+      })
 
       // touch: alarm + scramble only — no entrance jump, no typewriter stall
-      mm.add(
-        '(prefers-reduced-motion: no-preference) and (pointer: coarse)',
-        () => runAlarm(),
-      )
+      mm.add(MOTION_TOUCH, () => runAlarm())
 
       return () => mm.revert()
     },

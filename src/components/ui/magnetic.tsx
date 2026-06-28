@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { gsap } from '@lib/gsap'
+import { prefersReducedMotion } from '@lib/motion'
 import { cn } from '@utils/cn'
 
 export function Magnetic({
@@ -16,7 +17,7 @@ export function Magnetic({
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (prefersReducedMotion()) return
 
     const xTo = gsap.quickTo(el, 'x', { duration: 0.4, ease: 'power3.out' })
     const yTo = gsap.quickTo(el, 'y', { duration: 0.4, ease: 'power3.out' })

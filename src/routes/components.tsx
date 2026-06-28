@@ -17,7 +17,6 @@ import {
 import {
   Accordion,
   Avatar,
-  BackToTop,
   Badge,
   Breadcrumb,
   Burger,
@@ -282,8 +281,13 @@ function ShowcaseContent() {
             </Panel>
 
             <Panel title="Hamburger + Drawer">
-              <Burger open={drawerOpen} onClick={() => setDrawerOpen((v) => !v)} />
-              <p className="mt-3 font-mono text-xs text-faint">tap → opens drawer</p>
+              <Burger
+                open={drawerOpen}
+                onClick={() => setDrawerOpen((v) => !v)}
+              />
+              <p className="mt-3 font-mono text-xs text-faint">
+                tap → opens drawer
+              </p>
             </Panel>
 
             <Panel title="Command palette (⌘K)">
@@ -374,15 +378,38 @@ function ShowcaseContent() {
         open={palette.open}
         onClose={() => palette.setOpen(false)}
         items={[
-          { id: 'home', group: 'Navigate', label: 'Home', icon: <HouseIcon size={16} /> },
-          { id: 'writing', group: 'Navigate', label: 'Writing', icon: <PenNibIcon size={16} /> },
-          { id: 'work', group: 'Navigate', label: 'Work', icon: <FolderSimpleIcon size={16} /> },
-          { id: 'theme', group: 'Actions', label: 'Toggle theme', icon: <MoonIcon size={16} /> },
-          { id: 'rss', group: 'Actions', label: 'Copy RSS feed', icon: <RssIcon size={16} /> },
+          {
+            id: 'home',
+            group: 'Navigate',
+            label: 'Home',
+            icon: <HouseIcon size={16} />,
+          },
+          {
+            id: 'writing',
+            group: 'Navigate',
+            label: 'Writing',
+            icon: <PenNibIcon size={16} />,
+          },
+          {
+            id: 'work',
+            group: 'Navigate',
+            label: 'Work',
+            icon: <FolderSimpleIcon size={16} />,
+          },
+          {
+            id: 'theme',
+            group: 'Actions',
+            label: 'Toggle theme',
+            icon: <MoonIcon size={16} />,
+          },
+          {
+            id: 'rss',
+            group: 'Actions',
+            label: 'Copy RSS feed',
+            icon: <RssIcon size={16} />,
+          },
         ]}
       />
-
-      <BackToTop />
     </PageLayout>
   )
 }

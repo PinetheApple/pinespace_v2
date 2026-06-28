@@ -1,0 +1,39 @@
+---
+title: Motion with GSAP
+excerpt: Notes on building scroll-driven animation that respects reduced motion.
+date: 2026-06-20
+featured: true
+tags: [GSAP, Motion]
+---
+
+GSAP plus ScrollTrigger plus `useGSAP` gives you cleanup for free, and
+`matchMedia` keeps the whole thing accessible. Here's the shape I keep reaching for.
+
+## Setup
+
+Register plugins once, client-side only — they touch the DOM, so guard SSR:
+
+```ts
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger, SplitText, useGSAP)
+}
+```
+
+## Respecting reduced motion
+
+Wrap motion in `gsap.matchMedia()` so it never runs for people who opted out:
+
+```ts
+const mm = gsap.matchMedia()
+
+mm.add('(prefers-reduced-motion: no-preference)', () => {
+  gsap.from('[data-reveal]', { y: 20, opacity: 0, stagger: 0.08 })
+})
+```
+
+<Callout variant="warning">
+  Never animate opacity from 0 without a static fallback — if JS fails to run,
+  the content must still be visible.
+</Callout>
+
+That's the core of it. Everything else is choreography.

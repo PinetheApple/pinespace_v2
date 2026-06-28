@@ -2,4 +2,6 @@ allowBuilds:
   esbuild: true
   lightningcss: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - nitro-nightly@3.0.1-20260628-090458-3df69609
 verifyDepsBeforeRun: false
