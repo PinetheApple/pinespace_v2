@@ -1,26 +1,60 @@
-export type Post = {
+import type { ComponentType } from 'react'
+import type { MDXComponents } from 'mdx/types'
+
+export type PostMeta = {
   slug: string
   title: string
   excerpt: string
   date: string
-  body: string
+  featured?: boolean
+  tags?: Array<string>
 }
 
-export const posts: Array<Post> = [
-  {
-    slug: 'hello-world',
-    title: 'Hello, world',
-    excerpt: 'First post. Why I rebuilt the site from scratch with motion in mind.',
-    date: '2026-06-25',
-    body: 'This is placeholder body copy. Later this will be MDX rendered from the database. For now it is a plain string so the blog routes work end to end.',
-  },
-  {
-    slug: 'motion-with-gsap',
-    title: 'Motion with GSAP',
-    excerpt: 'Notes on building scroll-driven animation that respects reduced motion.',
-    date: '2026-06-20',
-    body: 'GSAP plus ScrollTrigger plus useGSAP gives you cleanup for free and matchMedia keeps it accessible.',
-  },
-]
+type Frontmatter = Omit<PostMeta, 'slug'>
+type PostContent = ComponentType<{ components?: MDXComponents }>
 
-export const getPost = (slug: string) => posts.find((p) => p.slug === slug)
+// Two globs over the same files, split by what each caller needs: the list
+// pages want only frontmatter (cheap), the post page wants the compiled body
+// (heavy). Splitting lets chunks that import metadata tree-shake the bodies.
+const frontmatters = import.meta.glob<Frontmatter>('./posts/*.mdx', {
+  eager: true,
+  import: 'frontmatter',
+})
+const contents = import.meta.glob<PostContent>('./posts/*.mdx', {
+  eager: true,
+  import: 'default',
+})
+
+// glob types every lookup as present; an arbitrary slug may not be.
+const lookup = <T>(map: Record<string, T>, key: string): T | undefined =>
+  map[key]
+
+const slugFromPath = (path: string) =>
+  path.slice(path.lastIndexOf('/') + 1).replace(/\.mdx$/, '')
+
+const pathFromSlug = (slug: string) => `./posts/${slug}.mdx`
+
+export const posts: Array<PostMeta> = Object.entries(frontmatters)
+  .map(([path, frontmatter]) => ({ slug: slugFromPath(path), ...frontmatter }))
+  .sort((a, b) => b.date.localeCompare(a.date))
+
+export const featuredPost = posts.find((p) => p.featured) ?? posts[0]
+export const otherPosts = posts.filter((p) => p !== featuredPost)
+
+export const allTags = [...new Set(posts.flatMap((p) => p.tags ?? []))].sort(
+  (a, b) => a.localeCompare(b),
+)
+
+export function adjacentPosts(slug: string) {
+  const i = posts.findIndex((p) => p.slug === slug)
+  if (i === -1) return { prev: undefined, next: undefined }
+  return { prev: posts[i + 1], next: posts[i - 1] }
+}
+
+export function getPost(slug: string) {
+  const path = pathFromSlug(slug)
+  const frontmatter = lookup(frontmatters, path)
+  const Content = lookup(contents, path)
+  if (!frontmatter || !Content) return undefined
+  return { meta: { slug, ...frontmatter } satisfies PostMeta, Content }
+}

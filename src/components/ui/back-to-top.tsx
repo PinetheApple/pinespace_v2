@@ -6,19 +6,21 @@ export function BackToTop() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    const onScroll = () => setShow(document.documentElement.scrollTop > 500)
+    const onScroll = () => setShow(window.scrollY > 400)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
   return (
     <button
       type="button"
       aria-label="Back to top"
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      onClick={scrollToTop}
       className={cn(
-        'fixed bottom-6 left-6 z-[150] grid size-11 place-items-center rounded-full border border-line bg-surface text-ink transition-all ease-nocturne hover:border-violet-400 hover:text-violet-300',
+        'fixed right-6 bottom-24 z-[180] grid size-12 place-items-center rounded-full border border-violet-400/40 bg-elevated text-violet-200 shadow-glow-sm transition-all ease-nocturne hover:border-violet-400 hover:text-violet-100 hover:shadow-glow-md',
         show ? 'opacity-100' : 'pointer-events-none opacity-0',
       )}
     >

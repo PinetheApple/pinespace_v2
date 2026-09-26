@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { PlusIcon } from '@phosphor-icons/react'
 import { cn } from '@utils/cn'
 
-export type AccordionItem = { id: string; title: React.ReactNode; body: React.ReactNode }
+export type AccordionItem = {
+  id: string
+  title: React.ReactNode
+  body: React.ReactNode
+}
 
 export function Accordion({
   items,
@@ -43,9 +47,9 @@ export function Accordion({
               )}
             >
               <div className="min-h-0 overflow-hidden">
-                <p className="max-w-[60ch] pb-[18px] text-sm text-muted">
+                <div className="pb-[18px] text-sm text-muted [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:marker:text-violet-400 [&_p]:max-w-[60ch] [&_a]:text-violet-300 [&_a]:underline">
                   {item.body}
-                </p>
+                </div>
               </div>
             </div>
           </div>

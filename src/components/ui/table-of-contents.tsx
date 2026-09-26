@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@utils/cn'
 
-export type TocEntry = { id: string; label: string }
+export type TocEntry = { id: string; label: string; level?: number }
 
 export function TableOfContents({
   entries,
@@ -36,7 +36,8 @@ export function TableOfContents({
           key={entry.id}
           href={`#${entry.id}`}
           className={cn(
-            'block border-l-2 py-1.5 pl-3.5 transition-all ease-nocturne',
+            'block border-l-2 py-1.5 transition-all ease-nocturne',
+            (entry.level ?? 2) >= 3 ? 'pl-7' : 'pl-3.5',
             entry.id === active
               ? 'border-l-violet-400 text-violet-300'
               : 'border-l-line text-muted hover:text-ink-2',

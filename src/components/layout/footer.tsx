@@ -17,7 +17,7 @@ export function Footer() {
 
         <div className="flex items-center gap-1">
           {site.socials.map((social) => {
-            const Icon = SOCIAL_ICONS[social.icon as keyof typeof SOCIAL_ICONS]
+            const Icon = SOCIAL_ICONS[social.icon]
             return (
               <a
                 key={social.label}
@@ -31,7 +31,7 @@ export function Footer() {
                 aria-label={social.label}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink"
               >
-                {Icon && <Icon size={16} weight="bold" />}
+                <Icon size={16} weight="bold" />
               </a>
             )
           })}
