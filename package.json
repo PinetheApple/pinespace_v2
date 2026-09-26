@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "NODE_OPTIONS='--import ./instrument.server.mjs' vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "build": "vite build",
+    "build": "vite build && cp instrument.server.mjs .output/server",
     "preview": "vite preview",
+    "start": "node --env-file-if-exists=.env --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
     "lint": "eslint",
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check ."
@@ -15,6 +16,7 @@
     "@gsap/react": "^2.1.2",
     "@mdx-js/react": "^3.1.1",
     "@phosphor-icons/react": "^2.1.10",
+    "@sentry/tanstackstart-react": "^10.62.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "latest",

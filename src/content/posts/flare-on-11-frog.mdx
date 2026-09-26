@@ -1,0 +1,54 @@
+---
+title: 'Flare-On 11: Frog'
+excerpt: When the maze has no solution, don't play the game — read the source and call the win function yourself.
+date: 2024-10-20
+tags: [Security, CTF, Reversing]
+---
+
+Frog is the opening challenge of Flare-On 11 (2024): a small Python game where
+you steer a frog to a statue. The catch — there's no actual path from start to
+finish. Since you have the source, there are two ways through.
+
+<Figure
+  src="/blog/frog/01.png"
+  alt="The Frog game: a frog on a grid, blocked from reaching the statue"
+  caption="No path from the frog to the statue"
+/>
+
+## Option 1: build a path
+
+The maze blocks are defined near the end of the program. Delete a few from the
+list and you open a corridor the frog can hop through.
+
+```python
+def BuildBlocks():
+    blockset = [
+        Block(3, 2, False),
+        Block(4, 2, False),
+        Block(5, 2, False),
+        # remove some of these to clear a path
+        ...
+    ]
+```
+
+## Option 2: skip the game entirely
+
+The flag lives in `GenerateFlagText()`, which only gets called once the player
+reaches the statue:
+
+```python
+if player.x == victory_tile.x and player.y == victory_tile.y:
+    victory_mode = True
+    flag_text = GenerateFlagText(player.x, player.y)
+```
+
+There's nothing stopping you from calling it directly with the victory tile's
+coordinates — no hopping required:
+
+```python
+flag_text = GenerateFlagText(int(victory_tile.x), int(victory_tile.y))
+```
+
+The lesson that carries through the rest of Flare-On: when you control the
+runtime, the "intended" path is optional. Find the function that produces the
+answer and call it on your terms.

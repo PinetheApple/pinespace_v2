@@ -1,0 +1,111 @@
+---
+title: Detecting Windows persistence with Splunk
+excerpt: Two MITRE persistence techniques, the Sysmon events they leave behind, and the SPL to catch them.
+date: 2024-07-20
+tags: [Security, Splunk, Blue Team]
+---
+
+import { CodeBlock } from '../../components/ui'
+
+export const auditdTime = String.raw`| rex field=msg "(?<unixtime>\d{10}\.\d{3})"
+| rex field=msg ":(?<msg_id>\d{6})"
+| eval readable_time = strftime(unixtime, "%Y-%m-%d %H:%M:%S.%Q")`
+
+export const auditdProctitle = String.raw`| eval process_title = urldecode(replace(proctitle,"([0-9A-F]{2})","%\1"))`
+
+export const auditdTransaction = String.raw`index=auditd
+| search [
+    index=auditd
+    | search key=<key_name>
+    | fields msg
+    | format ]`
+
+A chunk of SOC work is turning "an attacker might do X" into a query that fires
+when they actually do. Here are two persistence techniques from the MITRE
+ATT&CK framework, the traces they leave in Sysmon, and the Splunk searches that
+surface them — plus a note on wrangling Linux auditd logs into Splunk.
+
+## Screensaver hijack (T1546.002)
+
+Windows runs a configured `.scr` when the screensaver kicks in. Point that
+registry value at your payload and you've got
+[event-triggered execution](https://attack.mitre.org/techniques/T1546/002/). The
+tells are a registry write to `SCRNSAVE.EXE` (Sysmon EventCode 13) or the `reg
+add` that sets it (EventCode 1), correlated with the file actually landing on
+disk (EventCode 11).
+
+```splunk-spl
+index=sysmon (EventCode=13 Details="c:\\windows\\system32\\*.scr" TargetObject="*\\Control Panel\\Desktop\\SCRNSAVE.EXE" ) OR (EventCode=1 CommandLine="reg*\ add *\\Control Panel\\Desktop\" /v SCRNSAVE.EXE /t REG_SZ /d *C:\\WINDOWS\\System32\\*.scr*")
+| rex field=CommandLine "/d\ \"(?<TargetFilename>\S+)\""
+| eval TargetFilename=coalesce(TargetFilename, Details)
+| eval TargetFilename=lower(TargetFilename)
+| mvexpand User
+| search NOT User="NOT_TRANSLATED"
+| join TargetFilename [ search index=sysmon EventCode=11 TargetFilename="C:\\Windows\\System32*.scr" | eval TargetFilename=lower(TargetFilename) | fields TargetFilename Image ]
+| table UtcTime EventCode Sid ProcessGuid ProcessId User ComputerName TargetFilename Image
+```
+
+## Accessibility feature abuse (T1546.008)
+
+The "sticky keys" trick: swap an accessibility binary — `sethc.exe`,
+`utilman.exe`, `osk.exe` and friends — for `cmd.exe`, and you get a SYSTEM shell
+straight from the login screen.
+[T1546.008](https://attack.mitre.org/techniques/T1546/008/) shows up as writes to
+those filenames.
+
+```splunk-spl
+index=sysmon (EventCode=13 TargetObject IN (*osk.exe*, *sethc.exe*, *utilman.exe*, *magnify.exe*, *narrator.exe*, *DisplaySwitch.exe*, *atbroker.exe*)) OR (TargetFilename IN (*osk.exe*, *sethc.exe*) EventCode=11)
+| eval TargetFile=coalesce(TargetObject, TargetFilename)
+| mvexpand User
+| search NOT User="NOT_TRANSLATED"
+| table TargetFile UtcTime Sid ProcessGuid ProcessId User ComputerName
+```
+
+Both queries lean on Red Canary's
+[Atomic Red Team](https://github.com/redcanaryco/atomic-red-team) tests to
+generate the telemetry in the first place — a good way to confirm a detection
+fires before you trust it in production.
+
+## Getting auditd logs into Splunk
+
+auditd maintains logs of events on Linux systems so admins and analysts can
+monitor for breaches and incidents. What it records is driven by rules —
+[this ruleset](https://github.com/Neo23x0/auditd/blob/master/audit.rules) is a
+good model for how they're written, and Red Hat has a
+[walkthrough of configuring auditing](https://www.redhat.com/sysadmin/configure-linux-auditing-auditd).
+
+By default the logs land in `/var/log/audit` (changeable in `auditd.conf`) as
+ASCII key-value pairs. Some values, like `proctitle`, are hex-encoded.
+`ausearch -i` decodes them at the command line, but importing into Splunk you
+have to decode them yourself.
+
+The decoding evals I keep reaching for:
+
+<Accordion
+  items={[
+    {
+      id: 'time',
+      title: 'Extract a human-readable time and message ID',
+      body: <CodeBlock code={auditdTime} lang="text" />,
+    },
+    {
+      id: 'proctitle',
+      title: 'Decode the proctitle field',
+      body: <CodeBlock code={auditdProctitle} lang="text" />,
+    },
+    {
+      id: 'transaction',
+      title: 'Regroup a multi-line event with a subsearch',
+      body: <CodeBlock code={auditdTransaction} lang="text" />,
+    },
+  ]}
+/>
+
+<Callout>
+  Each auditd event spans multiple lines, so Splunk splits one event into
+  several. Group them back together on the `msg` field with `transaction` or a
+  subsearch before you analyze.
+</Callout>
+
+A detection is only as good as the telemetry underneath it. Half the job is
+making the logs say what actually happened.

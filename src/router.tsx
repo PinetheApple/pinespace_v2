@@ -1,4 +1,5 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import * as Sentry from '@sentry/tanstackstart-react'
 import { routeTree } from './routeTree.gen'
 import { ErrorBoundary } from '@components/error-boundary'
 import { NotFound } from '@components/not-found'
@@ -12,6 +13,12 @@ export function getRouter() {
     defaultErrorComponent: ErrorBoundary,
     defaultNotFoundComponent: NotFound,
   })
+
+  if (!router.isServer) {
+    Sentry.addIntegration(
+      Sentry.tanstackRouterBrowserTracingIntegration(router),
+    )
+  }
 
   return router
 }

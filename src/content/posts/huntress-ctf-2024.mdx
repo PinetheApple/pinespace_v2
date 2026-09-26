@@ -1,0 +1,132 @@
+---
+title: 'Huntress CTF 2024: warmup write-ups'
+excerpt: Nested QR codes, a cattle-themed esolang, a shop with no input validation, and an SGID find binary.
+date: 2024-10-14
+tags: [Security, CTF]
+---
+
+A few of the challenges I solved at the Huntress CTF 2024. None of these are
+hard, but each has a clean trick worth remembering.
+
+## Matryoshka QR
+
+The challenge hands you a QR code. Scan it and you don't get a flag — you get the
+bytes of a PNG (the `\x89PNG` header gives it away), which is itself another QR
+code. Save the bytes, open the image, scan the smaller code inside for the flag.
+
+<Figure
+  src="/blog/matryoshka-qr/02.png"
+  alt="The QR code supplied by the challenge"
+  caption="qrcode.png — scanning it yields PNG bytes, not a flag"
+/>
+
+<Figure
+  src="/blog/matryoshka-qr/03.png"
+  alt="The smaller QR code hidden inside"
+  caption="inner_qrcode.png — the nested code that holds the flag"
+/>
+
+You can do the extraction by hand, but Python makes it tidy:
+
+```python
+from PIL import Image
+import io
+
+inner_data = b"\x89PNG\r\n\x1a\n..."  # the bytes decoded from the outer QR
+inner_image = Image.open(io.BytesIO(inner_data))
+inner_image.save('inner_qrcode.png')
+```
+
+## Cattle
+
+The attached file is a wall of `m`s and `o`s. Searched around and it turned out
+to be [COW](https://bigzaphod.github.io/COW/), an esoteric language whose entire
+instruction set is variations on "moo." An
+[online COW interpreter](https://www.cachesleuth.com/cow.html) runs it and prints
+the flag.
+
+<Figure
+  src="/blog/cattle/02.png"
+  alt="The COW source code"
+  caption="The 'code' — MOO, moO, mOo and friends"
+/>
+
+## Whamazon
+
+A little shop where the flag costs $10,000,000,000 and you start with $50. Easy
+to overthink.
+
+<Figure
+  src="/blog/whamazon/02.png"
+  alt="The Whamazon shop menu with a $50 balance"
+  caption="$50 to spend; the flag is item 7"
+/>
+
+The store multiplies quantity by unit price and subtracts that from your
+balance — but it never checks that the quantity is positive.
+
+<Figure
+  src="/blog/whamazon/04.png"
+  alt="Buying one apple for three dollars"
+  caption="Cost = quantity × price, subtracted from the wallet"
+/>
+
+Buy a **negative** number of something and the subtraction becomes an addition.
+Your balance balloons.
+
+<Figure
+  src="/blog/whamazon/05.png"
+  alt="Buying a negative quantity of video games to inflate the balance"
+  caption="−5×10²¹ video games later, the wallet is very full"
+/>
+
+Now the flag is affordable, and it's waiting in your inventory.
+
+<Figure
+  src="/blog/whamazon/07.png"
+  alt="The inventory listing showing the flag"
+  caption="The flag, bought and paid for"
+/>
+
+## Finder's Fee
+
+SSH in and `user` can't read `finder`'s home directory.
+
+<Figure
+  src="/blog/finders-fee/02.png"
+  alt="Listing /home shows finder's directory is unreadable"
+  caption="Permission denied on /home/finder"
+/>
+
+But `/bin` links to `/usr/bin`, and there the `find` binary has its
+[SGID bit set](https://linuxconfig.org/how-to-use-special-permissions-the-setuid-setgid-and-sticky-bits)
+(`rwxr-sr-x root finder`) — so `find` runs with the `finder` group's permissions.
+
+<Figure
+  src="/blog/finders-fee/04.png"
+  alt="The find binary with its SGID bit set to the finder group"
+  caption="find is SGID finder"
+/>
+
+`find` will happily list a directory you couldn't otherwise read:
+
+<Figure
+  src="/blog/finders-fee/05.png"
+  alt="Using find to list the contents of finder's home directory"
+  caption="flag.txt, now visible"
+/>
+
+Its `-exec` flag then runs a command per result:
+
+```bash
+find /home/finder/ -name flag.txt -exec cat {} \;
+```
+
+<Figure
+  src="/blog/finders-fee/06.png"
+  alt="find -exec cat printing the flag"
+  caption="-exec cat runs as the finder group and prints the flag"
+/>
+
+Any SGID/SUID binary that can read files or spawn processes is a
+privilege-escalation primitive — `find` is one of the friendliest.

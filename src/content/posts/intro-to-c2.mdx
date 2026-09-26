@@ -1,0 +1,127 @@
+---
+title: How C2 frameworks work
+excerpt: Servers, agents, listeners, beacons — the moving parts of command and control, and how attackers hide the traffic.
+date: 2024-09-10
+tags: [Security, Red Team]
+---
+
+import { CodeBlock } from '../../components/ui'
+
+export const armitageInit = String.raw`systemctl start postgresql && systemctl status postgresql;
+msfdb --use-defaults delete;
+msfdb --use-defaults init;`
+
+export const armitageStart = String.raw`# start the team server
+cd /opt/armitage/release/unix && ./teamserver <ip_address> <password>
+
+# connect a client
+
+cd /opt/armitage/release/unix && ./armitage`
+
+C2 — command and control — is the machinery a red teamer uses to talk to
+compromised machines. Strip away the tooling and it's four parts talking to each
+other.
+
+## The pieces
+
+- **C2 server** — the central point agents call back to, and where the operator
+  issues commands.
+- **Agent / payload** — a program running on the compromised host that calls
+  home. It usually does far more than a plain reverse shell.
+- **Listener** — a program on the C2 server waiting for callbacks over a given
+  port or protocol.
+- **Beacon** — the act of an agent calling back to a listener.
+
+## Hiding the callbacks
+
+Beacons are the giveaway. If an agent phones home on a fixed cadence, an analyst
+or a security product spots the pattern quickly. Two techniques break it up:
+
+- **Sleep timers** — the agent waits a set period before beaconing.
+- **Jitter** — random variation added to that sleep, so the interval between
+  callbacks is never the same twice.
+
+## Modules
+
+Modules extend what an agent and server can do. Common ones handle
+post-exploitation and pivoting — routing traffic through a compromised host to
+reach machines you couldn't otherwise touch.
+
+## The frameworks
+
+A lot of C2 work is picking a framework and standing it up.
+
+<Accordion
+  items={[
+    {
+      id: 'open-source',
+      title: 'Open-source frameworks',
+      body: (
+        <ul>
+          <li>Metasploit</li>
+          <li>Armitage</li>
+          <li>PowerShell Empire / Starkiller</li>
+          <li>Covenant</li>
+          <li>Sliver</li>
+        </ul>
+      ),
+    },
+    {
+      id: 'paid',
+      title: 'Paid / premium frameworks',
+      body: (
+        <ul>
+          <li>Cobalt Strike</li>
+          <li>Brute Ratel</li>
+        </ul>
+      ),
+    },
+  ]}
+/>
+
+The [C2 Matrix](https://howto.thec2matrix.com/) is a good map of what's out there.
+
+## Standing up Armitage
+
+Armitage sits on top of Metasploit, so the database has to be initialized first.
+
+<Accordion
+  items={[
+    {
+      id: 'prepare',
+      title: 'Preparing the environment',
+      body: (
+        <>
+          <p>Initialize the Metasploit database before starting Armitage:</p>
+          <CodeBlock code={armitageInit} lang="bash" />
+        </>
+      ),
+    },
+    {
+      id: 'start',
+      title: 'Starting and connecting to Armitage',
+      body: (
+        <>
+          <p>
+            Start the team server with the server IP and a shared password, then
+            connect a client:
+          </p>
+          <CodeBlock code={armitageStart} lang="bash" />
+        </>
+      ),
+    },
+  ]}
+/>
+
+The username at the client prompt is just a nickname — the shared password is
+what actually authenticates you to the server.
+
+That's the skeleton. Everything fancy a C2 framework does — obfuscation,
+malleable profiles, in-memory execution — hangs off these same four parts.
+
+## Further reading
+
+- [Red Team Fundamentals](https://tryhackme.com/module/red-team-fundamentals) —
+  the TryHackMe module these notes come from.
+- [RedFox Security: intro to C2 frameworks](https://redfoxsec.com/blog/introduction-to-c2-frameworks/)
+- [A C2 framework overview](https://hackmd.io/@VJ99/B1nBSfmZi)

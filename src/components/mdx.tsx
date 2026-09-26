@@ -1,5 +1,5 @@
 import type { MDXComponents } from 'mdx/types'
-import { Callout, CodeBlock } from '@ui'
+import { Accordion, Callout, CodeBlock, Figure, Tabs } from '@ui'
 import type { Lang } from '@utils/highlight'
 import { cn } from '@utils/cn'
 
@@ -34,5 +34,17 @@ export const mdxComponents: MDXComponents = {
     ...props
   }: React.ComponentProps<typeof CodeBlock>) => (
     <CodeBlock className={cn(BLOCK, className)} {...props} />
+  ),
+  Figure: ({ className, ...props }: React.ComponentProps<typeof Figure>) => (
+    <Figure className={cn(BLOCK, className)} {...props} />
+  ),
+  Accordion: ({
+    className,
+    ...props
+  }: React.ComponentProps<typeof Accordion>) => (
+    <Accordion className={cn(BLOCK, className)} {...props} />
+  ),
+  Tabs: ({ className, ...props }: React.ComponentProps<typeof Tabs>) => (
+    <Tabs className={cn(BLOCK, className)} {...props} />
   ),
 }

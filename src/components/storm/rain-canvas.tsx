@@ -4,9 +4,17 @@ import { cn } from '@utils/cn'
 
 type Drop = { x: number; y: number; len: number; speed: number; alpha: number }
 
-const DENSITY = 0.00008 // drops per px² of viewport
+const DEFAULT_DENSITY = 0.00008 // drops per px² of viewport
 
-export function RainCanvas({ className }: { className?: string }) {
+export function RainCanvas({
+  className,
+  density = DEFAULT_DENSITY,
+  cover = 'viewport',
+}: {
+  className?: string
+  density?: number
+  cover?: 'viewport' | 'parent'
+}) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -35,12 +43,17 @@ export function RainCanvas({ className }: { className?: string }) {
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2)
-      w = window.innerWidth
-      h = window.innerHeight
+      if (cover === 'viewport') {
+        w = window.innerWidth
+        h = window.innerHeight
+      } else {
+        w = canvas.clientWidth
+        h = canvas.clientHeight
+      }
       canvas.width = w * dpr
       canvas.height = h * dpr
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drops = Array.from({ length: Math.round(w * h * DENSITY) }, make)
+      drops = Array.from({ length: Math.round(w * h * density) }, make)
     }
 
     const tick = () => {
@@ -69,21 +82,28 @@ export function RainCanvas({ className }: { className?: string }) {
 
     resize()
     raf = requestAnimationFrame(tick)
-    window.addEventListener('resize', resize)
+    const observer = cover === 'parent' ? new ResizeObserver(resize) : null
+    observer?.observe(canvas)
+    if (!observer) window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
+      observer?.disconnect()
+      if (!observer) window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [density, cover])
 
   return (
     <canvas
       ref={ref}
       aria-hidden
-      className={cn('pointer-events-none fixed inset-0', className)}
+      className={cn(
+        'pointer-events-none',
+        cover === 'viewport' ? 'fixed inset-0' : 'absolute inset-0',
+        className,
+      )}
     />
   )
 }

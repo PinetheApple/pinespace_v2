@@ -1,5 +1,6 @@
 import { ArrowUpRightIcon } from '@phosphor-icons/react'
-import { projectLink, type Project } from '@content/projects'
+import { projectLink } from '@content/projects'
+import type { Project } from '@content/projects'
 import { cn } from '@utils/cn'
 
 export function ProjectCard({

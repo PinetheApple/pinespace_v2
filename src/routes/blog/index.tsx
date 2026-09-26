@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { PageLayout, Container } from '@layout'
-import { Badge, SearchBar, Select } from '@ui'
+import { Badge, PostListItem, SearchBar, Select } from '@ui'
 import { posts, allTags } from '@content/posts'
 
 export const Route = createFileRoute('/blog/')({ component: BlogIndex })
@@ -89,19 +89,7 @@ function BlogIndex() {
           <ul className="mt-8 divide-y divide-line border-y border-line">
             {visible.map((post) => (
               <li key={post.slug}>
-                <Link
-                  to="/blog/$slug"
-                  params={{ slug: post.slug }}
-                  className="group flex flex-col gap-1 py-6 transition-colors"
-                >
-                  <span className="font-mono text-xs text-faint">
-                    {post.date}
-                  </span>
-                  <h2 className="font-display text-xl font-bold text-ink transition-colors group-hover:text-violet-300">
-                    {post.title}
-                  </h2>
-                  <p className="text-sm text-muted">{post.excerpt}</p>
-                </Link>
+                <PostListItem post={post} />
               </li>
             ))}
           </ul>
