@@ -3,7 +3,7 @@ export const site = {
   handle: 'pine.space',
   tagline: 'software & words',
   description: 'Software Engineer',
-  url: 'https://pine.space',
+  url: 'https://pinespace.dev',
   nav: [
     { label: 'Work', to: '/', hash: 'work' },
     { label: 'Projects', to: '/projects', menu: 'projects' },
