@@ -17,25 +17,25 @@ type Stint = {
 
 const STINTS: Array<Stint> = [
   {
-    period: '2025 — now',
+    period: '2025–present',
     role: 'Full Stack Developer',
     org: 'AI startup',
     summary:
-      'Building AI-powered web applications — React on the front, Python and NestJS services behind. Started as an intern, stayed for the interesting problems.',
+      'Building web applications with React and TypeScript, backed by Python and NestJS services. Joined as an intern before moving into a full-time role.',
   },
   {
     period: '2024',
     role: 'Cybersecurity Intern',
-    org: 'Aerospace company · SOC',
+    org: 'Airbus · Security Operations Centre',
     summary:
-      'Security Operations Centre work: log monitoring and alerting in Splunk, auditd use cases for Linux fleets, a deep dive into Windows internals and container security.',
+      'Monitored logs and built Splunk alerts, developed auditd use cases for Linux systems, and studied Windows internals and container security.',
   },
   {
     period: '2023',
     role: 'Student Trainee',
-    org: 'Engineering multinational',
+    org: 'Bosch',
     summary:
-      'Java tooling for the systems-engineering department — automated migrating system models between modelling tools.',
+      'Developed Java software for the systems engineering department to automate system model migration between modelling tools.',
   },
 ]
 
@@ -53,7 +53,7 @@ const SKILLS = [
 
 const CERTS = [
   'Red Hat Certified Systems Administrator (RHCSA)',
-  'Cisco Certified Support Technician — Cybersecurity',
+  'Cisco Certified Support Technician (Cybersecurity)',
 ]
 
 const INTERESTS = ['Sports', 'Drums', 'Calisthenics', 'Bouldering']
@@ -97,21 +97,21 @@ function About() {
               className="mt-8 max-w-2xl space-y-4 text-lg text-muted"
             >
               <p>
-                I'm Jonathan — a full-stack developer who came in through the
-                security door. These days I build AI-powered web applications:
-                React and TypeScript up front, Python and NestJS behind, AWS
-                underneath.
+                I'm Jonathan, a full-stack developer at an AI startup. I build
+                web applications with React and TypeScript, backed by Python and
+                NestJS services on AWS.
               </p>
               <p>
-                Before that I worked in a Security Operations Centre — Splunk,
-                Linux auditd, Windows internals — and the security habit stuck.
-                I still poke at low-level things for fun: sandbox detection in
-                C++, an interpreter in Rust, CTFs, and the occasional TryHackMe
-                or HackTheBox room.
+                Before this, I worked in the Security Operations Centre at
+                Airbus, monitoring logs and building alerts in Splunk. Outside
+                work, I build systems projects, including a sandbox detector in
+                C++ and an interpreter in Rust. I also take part in CTFs and use
+                TryHackMe and HackTheBox.
               </p>
               <p>
-                This site is where the software and the words go. Computer
-                science engineering graduate, class of 2024. Based in India.
+                I graduated in 2024 with a degree in computer science
+                engineering and am based in India. I use this site to share my
+                projects and write about security and systems.
               </p>
             </div>
           </section>
