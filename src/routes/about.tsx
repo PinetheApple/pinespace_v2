@@ -156,6 +156,16 @@ function About() {
               ))}
             </ul>
           </AboutSection>
+
+          <AboutSection title="Contact">
+            <p data-reveal className="mt-6 max-w-2xl text-muted">
+              You can reach me via email at{' '}
+              <ExternalArrowLink href="mailto:contact@pinespace.dev">
+                contact@pinespace.dev
+              </ExternalArrowLink>
+              .
+            </p>
+          </AboutSection>
         </Container>
       </div>
     </PageLayout>

@@ -2,7 +2,7 @@ export const site = {
   name: 'Pine Space',
   handle: 'pine.space',
   tagline: 'software & words',
-  description: 'Engineer & writer. Fast, considered things for the web.',
+  description: 'Software Engineer',
   url: 'https://pine.space',
   nav: [
     { label: 'Work', to: '/', hash: 'work' },
