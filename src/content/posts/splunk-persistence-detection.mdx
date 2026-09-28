@@ -20,19 +20,17 @@ export const auditdTransaction = String.raw`index=auditd
     | fields msg
     | format ]`
 
-A chunk of SOC work is turning "an attacker might do X" into a query that fires
-when they actually do. Here are two persistence techniques from the MITRE
-ATT&CK framework, the traces they leave in Sysmon, and the Splunk searches that
-surface them — plus a note on wrangling Linux auditd logs into Splunk.
+These notes combine two MITRE ATT&CK persistence techniques and their Splunk
+searches. They also explain how to prepare Linux auditd logs for Splunk.
 
 ## Screensaver hijack (T1546.002)
 
-Windows runs a configured `.scr` when the screensaver kicks in. Point that
-registry value at your payload and you've got
-[event-triggered execution](https://attack.mitre.org/techniques/T1546/002/). The
-tells are a registry write to `SCRNSAVE.EXE` (Sysmon EventCode 13) or the `reg
-add` that sets it (EventCode 1), correlated with the file actually landing on
-disk (EventCode 11).
+Windows runs the configured `.scr` file when the screensaver starts. Changing
+the `SCRNSAVE.EXE` registry value can provide
+[event-triggered execution](https://attack.mitre.org/techniques/T1546/002/).
+The useful records are a registry change (Sysmon EventCode 13), the `reg add`
+process that makes the change (EventCode 1), and the file being written to disk
+(EventCode 11).
 
 ```splunk-spl
 index=sysmon (EventCode=13 Details="c:\\windows\\system32\\*.scr" TargetObject="*\\Control Panel\\Desktop\\SCRNSAVE.EXE" ) OR (EventCode=1 CommandLine="reg*\ add *\\Control Panel\\Desktop\" /v SCRNSAVE.EXE /t REG_SZ /d *C:\\WINDOWS\\System32\\*.scr*")
@@ -47,11 +45,11 @@ index=sysmon (EventCode=13 Details="c:\\windows\\system32\\*.scr" TargetObject="
 
 ## Accessibility feature abuse (T1546.008)
 
-The "sticky keys" trick: swap an accessibility binary — `sethc.exe`,
-`utilman.exe`, `osk.exe` and friends — for `cmd.exe`, and you get a SYSTEM shell
-straight from the login screen.
-[T1546.008](https://attack.mitre.org/techniques/T1546/008/) shows up as writes to
-those filenames.
+The "sticky keys" technique replaces a Windows accessibility program, such as
+`sethc.exe`, `utilman.exe`, or `osk.exe`, with `cmd.exe`. This can open a
+SYSTEM command prompt from the login screen.
+[T1546.008](https://attack.mitre.org/techniques/T1546/008/) can appear as writes
+to those filenames.
 
 ```splunk-spl
 index=sysmon (EventCode=13 TargetObject IN (*osk.exe*, *sethc.exe*, *utilman.exe*, *magnify.exe*, *narrator.exe*, *DisplaySwitch.exe*, *atbroker.exe*)) OR (TargetFilename IN (*osk.exe*, *sethc.exe*) EventCode=11)
@@ -61,21 +59,21 @@ index=sysmon (EventCode=13 TargetObject IN (*osk.exe*, *sethc.exe*, *utilman.exe
 | table TargetFile UtcTime Sid ProcessGuid ProcessId User ComputerName
 ```
 
-Both queries lean on Red Canary's
-[Atomic Red Team](https://github.com/redcanaryco/atomic-red-team) tests to
-generate the telemetry in the first place — a good way to confirm a detection
-fires before you trust it in production.
+The original notes link each technique to its corresponding Atomic Red Team
+test: [T1546.002](https://github.com/redcanaryco/atomic-red-team/blob/5c1e6f1b4fafd01c8d1ece85f510160fc1275fbf/atomics/T1546.002/T1546.002.md)
+and [T1546.008](https://github.com/redcanaryco/atomic-red-team/blob/5c1e6f1b4fafd01c8d1ece85f510160fc1275fbf/atomics/T1546.008/T1546.008.md).
 
 ## Getting auditd logs into Splunk
 
-auditd maintains logs of events on Linux systems so admins and analysts can
-monitor for breaches and incidents. What it records is driven by rules —
-[this ruleset](https://github.com/Neo23x0/auditd/blob/master/audit.rules) is a
-good model for how they're written, and Red Hat has a
-[walkthrough of configuring auditing](https://www.redhat.com/sysadmin/configure-linux-auditing-auditd).
+auditd records events on Linux systems so administrators and analysts can
+investigate security incidents. Rules control what it records. [This example
+ruleset](https://github.com/Neo23x0/auditd/blob/master/audit.rules) shows how
+rules are written, and Red Hat provides a [guide to configuring
+auditd](https://www.redhat.com/sysadmin/configure-linux-auditing-auditd).
 
-By default the logs land in `/var/log/audit` (changeable in `auditd.conf`) as
-ASCII key-value pairs. Some values, like `proctitle`, are hex-encoded.
+By default the logs land in `/var/log/audit` (changeable in
+[`auditd.conf`](https://man7.org/linux/man-pages/man5/auditd.conf.5.html)) as
+ASCII key-value pairs. Some values, such as `proctitle`, are hex-encoded.
 `ausearch -i` decodes them at the command line, but importing into Splunk you
 have to decode them yourself.
 
@@ -107,5 +105,5 @@ The decoding evals I keep reaching for:
   subsearch before you analyze.
 </Callout>
 
-A detection is only as good as the telemetry underneath it. Half the job is
-making the logs say what actually happened.
+A detection depends on the telemetry underneath it. The logs must show what
+actually happened.

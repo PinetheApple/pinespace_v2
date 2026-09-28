@@ -64,7 +64,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body id="top">
         <div
           aria-hidden
           className="nocturne-grid pointer-events-none fixed inset-0 -z-10"

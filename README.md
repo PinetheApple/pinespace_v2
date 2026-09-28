@@ -49,8 +49,9 @@ scales (`well` / `base` / `surface` / `elevated`, `ink` / `muted` / `faint`),
 glow shadows, and the `nocturne-*` utilities. Fonts: Sora (display), Inter
 (body), JetBrains Mono (labels/code).
 
-The full component library — buttons, inputs, overlays, blog primitives — is
-exported from `#/components/ui` and showcased live at the **`/components`** route.
+The full component library — buttons, inputs, overlays, and blog primitives — is
+exported from `#/components/ui`. Its showcase is available at **`/components`**
+during local development and returns the site's not-found page in production.
 
 ## Routing
 

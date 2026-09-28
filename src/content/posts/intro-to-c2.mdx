@@ -1,6 +1,6 @@
 ---
 title: How C2 frameworks work
-excerpt: Servers, agents, listeners, beacons — the moving parts of command and control, and how attackers hide the traffic.
+excerpt: The main parts of command and control, how they communicate, and how frameworks vary the timing.
 date: 2024-09-10
 tags: [Security, Red Team]
 ---
@@ -18,38 +18,42 @@ cd /opt/armitage/release/unix && ./teamserver <ip_address> <password>
 
 cd /opt/armitage/release/unix && ./armitage`
 
-C2 — command and control — is the machinery a red teamer uses to talk to
-compromised machines. Strip away the tooling and it's four parts talking to each
-other.
+C2 means command and control. It lets an operator send tasks to compromised
+machines and receive results.
+
+These notes are based on the C2 sections of TryHackMe's Red Team Fundamentals
+module. They cover the topics included here, not every part of C2.
 
 ## The pieces
 
-- **C2 server** — the central point agents call back to, and where the operator
-  issues commands.
-- **Agent / payload** — a program running on the compromised host that calls
-  home. It usually does far more than a plain reverse shell.
-- **Listener** — a program on the C2 server waiting for callbacks over a given
-  port or protocol.
-- **Beacon** — the act of an agent calling back to a listener.
+- **C2 server:** infrastructure the operator uses to send tasks and receive results.
+- **Agent:** software running on a compromised host.
+- **Payload:** code delivered for execution. It may be the agent, or it may install
+  one.
+- **Listener:** a configured service or endpoint that accepts a connection or
+  callback.
+- **Beacon or check-in:** a callback made on a schedule.
+
+Names vary by framework. Cobalt Strike calls its agent payload **Beacon**.
 
 ## Hiding the callbacks
 
-Beacons are the giveaway. If an agent phones home on a fixed cadence, an analyst
-or a security product spots the pattern quickly. Two techniques break it up:
+Regular callbacks can create a recognizable pattern. Two techniques make the
+timing less predictable:
 
-- **Sleep timers** — the agent waits a set period before beaconing.
-- **Jitter** — random variation added to that sleep, so the interval between
-  callbacks is never the same twice.
+- **Sleep timers:** the agent waits a set period before checking in.
+- **Jitter:** random variation added to that sleep, so the interval between
+  callbacks is less predictable.
 
 ## Modules
 
-Modules extend what an agent and server can do. Common ones handle
-post-exploitation and pivoting — routing traffic through a compromised host to
-reach machines you couldn't otherwise touch.
+Modules extend what an agent and server can do. Some support work after initial
+access. Others support pivoting, which routes traffic through a compromised
+host to reach another network.
 
 ## The frameworks
 
-A lot of C2 work is picking a framework and standing it up.
+Several frameworks provide these parts:
 
 <Accordion
   items={[
@@ -83,7 +87,7 @@ The [C2 Matrix](https://howto.thec2matrix.com/) is a good map of what's out ther
 
 ## Standing up Armitage
 
-Armitage sits on top of Metasploit, so the database has to be initialized first.
+Before starting Armitage, initialize the Metasploit database.
 
 <Accordion
   items={[
@@ -113,15 +117,12 @@ Armitage sits on top of Metasploit, so the database has to be initialized first.
   ]}
 />
 
-The username at the client prompt is just a nickname — the shared password is
-what actually authenticates you to the server.
-
-That's the skeleton. Everything fancy a C2 framework does — obfuscation,
-malleable profiles, in-memory execution — hangs off these same four parts.
+The username at the client prompt is a nickname. The shared password is what
+authenticates the connection.
 
 ## Further reading
 
-- [Red Team Fundamentals](https://tryhackme.com/module/red-team-fundamentals) —
-  the TryHackMe module these notes come from.
+- [Red Team Fundamentals](https://tryhackme.com/module/red-team-fundamentals)
+  is the TryHackMe module these notes come from.
 - [RedFox Security: intro to C2 frameworks](https://redfoxsec.com/blog/introduction-to-c2-frameworks/)
 - [A C2 framework overview](https://hackmd.io/@VJ99/B1nBSfmZi)

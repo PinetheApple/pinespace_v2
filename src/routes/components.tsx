@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { respondNotFound } from '@lib/http'
+import { NotFound } from '@components/not-found'
 import {
   ArrowSquareOutIcon,
   BellIcon,
@@ -46,7 +48,17 @@ import {
 } from '@ui'
 import { Container, PageLayout } from '@layout'
 
-export const Route = createFileRoute('/components')({ component: Showcase })
+export const Route = createFileRoute('/components')({
+  loader: () => {
+    if (import.meta.env.PROD) respondNotFound()
+  },
+  head: () => ({
+    meta: import.meta.env.PROD
+      ? [{ name: 'robots', content: 'noindex, nofollow' }]
+      : [],
+  }),
+  component: import.meta.env.PROD ? NotFound : Showcase,
+})
 
 function Showcase() {
   return (

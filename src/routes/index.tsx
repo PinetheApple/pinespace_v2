@@ -197,9 +197,8 @@ function AboutTeaser() {
           data-reveal
           className="mt-6 max-w-3xl font-display text-2xl font-bold leading-snug text-ink-2 sm:text-3xl"
         >
-          Full-stack developer building AI-powered web apps — React up front,
-          Python and NestJS behind. Started out in cybersecurity; still curious
-          about systems, from Windows internals to Rust interpreters.
+          I'm a full-stack developer with a background in cybersecurity. I build
+          web applications and write about security and systems.
         </p>
         <ArrowLink data-reveal to="/about" className="mt-8">
           More about me

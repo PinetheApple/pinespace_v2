@@ -1,6 +1,6 @@
 ---
 title: 'Container security: escapes and hardening'
-excerpt: Four ways a misconfigured container hands you the host — and the full set of switches that lock it back down.
+excerpt: Common container escape paths, the conditions they need, and practical ways to reduce the risk.
 date: 2024-08-15
 featured: true
 tags: [Security, Linux, Docker]
@@ -30,7 +30,7 @@ export const seccompProfile = String.raw`{
   ]
 }`
 
-export const apparmorProfile = String.raw`/usr/sbin/httpd {
+export const apparmorProfile = String.raw`profile docker-apache {
 
 capability setgid,
 capability setuid,
@@ -63,43 +63,40 @@ deny /usr/**,
 deny /sbin/\*\*
 }`
 
-Containers feel like a boundary. They aren't much of one when they're configured
-carelessly. This is my working notes on both halves of the problem: how a badly
-configured container gets you onto the host, and how to configure one so it
-doesn't.
+These notes cover common container misconfigurations that can expose the host,
+along with ways to reduce the risk. They are based on the [Container Security
+module on TryHackMe](https://tryhackme.com/module/container-security).
 
 ## Container vulnerabilities
 
 ### Privileged containers
 
-Docker runs a container in one of two modes:
+Docker containers are unprivileged by default and keep only a restricted set of
+Linux capabilities. `--privileged` grants all capabilities, exposes host devices,
+and relaxes AppArmor or SELinux restrictions. It gives the container nearly the
+same host access as a process running outside a container, but it is not a
+separate host-OS mode. View a container's capabilities with `capsh --print`.
 
-- **User mode** — interacts with the host OS through the Docker Engine.
-- **Privileged** — interacts directly with the host OS.
+This older escape works only under specific conditions. The host must still use
+a writable cgroup v1 hierarchy, and the container needs broad privileges on a
+rootful Docker daemon. The named controller must exist, and the payload must be
+stored at a path the host can execute. Patched kernels also require the
+`CAP_SYS_ADMIN` capability in the host's main user namespace, so rootless
+containers cannot use this route. The exploit works as follows:
 
-If a container runs with privileged access, commands can effectively be executed
-as root on the host. View a container's capabilities with `capsh --print`.
-
-The classic escape abuses the Linux kernel's `cgroups` release-agent mechanism.
-The kernel uses cgroups to manage processes, and cgroups can be managed as root
-on the host — so a privileged container can mount one and point its release
-handler at a script it controls. Walking through the exploit:
-
-1. Create a cgroup to work with. Because cgroups are managed as root on the host,
-   mount one to `/tmp/cgrp` in the container.
-2. Tell the kernel to run code on release — writing `1` to
-   `/tmp/cgrp/x/notify_on_release` makes the kernel execute something once the
-   cgroup finishes.
+1. Create a cgroup to work with and mount it to `/tmp/cgrp` in the container.
+2. Tell the kernel to run code on release. Writing `1` to
+   `/tmp/cgrp/x/notify_on_release` enables the release notification.
 3. Find where the container's files live on the host and store that as a
    variable.
 4. Write the location of the exploit on the host into `release_agent`, so the
    exploit runs when the cgroup is released.
-5. Turn the exploit into a shell on the host.
-6. Run a command — `cat /home/user1/flag.txt > $host_path/flag.txt` — to pull the
+5. Create a shell script that will run on the host.
+6. Run a command, `cat /home/user1/flag.txt > $host_path/flag.txt`, to pull the
    host file back into the container.
 7. Make the exploit executable.
-8. Add a process to `/tmp/cgrp/x/cgroup.procs`; when it's released, the contents
-   execute.
+8. Add a short-lived process to the cgroup. When that process exits and the
+   cgroup becomes empty, the kernel runs the configured release agent.
 
 <Accordion
   items={[
@@ -116,41 +113,48 @@ The full explanation of why this works is in Trail of Bits'
 
 ### Escaping via an exposed Docker daemon
 
-Docker commands run over a socket. Unix sockets use filesystem permissions, so
-you have to be root or in the `docker` group to run Docker commands. That socket
-gets mounted into a container as a `docker.sock` file — search for it with
-`find` (on Ubuntu it lives under `/var/run`).
+Docker commands normally reach the daemon through a Unix socket. Access depends
+on the socket's actual filesystem permissions or ACLs. A rootful installation
+commonly uses `/var/run/docker.sock`, owned by root and accessible to the
+`docker` group. That group grants root-level control of the daemon. The socket
+appears inside a container only if someone explicitly mounts it. Rootless Docker
+instead runs the daemon as a non-root user and commonly uses
+`/run/user/<uid>/docker.sock`.
 
-If you can reach the daemon, you can ask it to create a new container with the
-host's filesystem mounted in, and step across:
+If you can control a conventional rootful daemon, you can ask it to mount the
+host's root filesystem into a new container and modify host files. The command
+below opens a shell rooted at that mounted filesystem; it does not by itself
+join every host namespace. A rootless daemon is limited by the permissions of
+the user running it.
 
 ```bash
 docker run -v /:/mnt --rm -it alpine chroot /mnt sh
 ```
 
 That command mounts the host filesystem to `/mnt` in a new container, runs it
-interactively with `-it`, changes the root to `/mnt`, and drops into `sh` — a
-shell on the host's files.
+interactively with `-it`, changes the root to `/mnt`, and starts `sh`.
 
 ### Remote code execution via an exposed daemon
 
-Docker can also use TCP sockets for [IPC](https://en.wikipedia.org/wiki/Inter-process_communication),
-so it can be administered remotely with tools like Portainer or Jenkins. When
-configured that way the engine listens on a port (2375 by default), which is easy
-to reach and hard to secure. Find it with nmap:
+Docker listens on a local Unix socket by default. An administrator can
+explicitly expose the API over TCP. The conventional ports are `2375` without
+TLS and `2376` with TLS. An unauthenticated rootful daemon reachable over the
+network can give a remote user root-level control of the host. Current Docker
+versions restrict insecure TCP setups, but older or deliberately weakened
+installations may still expose them.
 
 ```bash
 nmap -sV -p 2375 <ip_address>
 ```
 
-Poke it with `curl`:
+Check the endpoint with `curl`:
 
 ```bash
 curl http://<ip_address>:2375/version
 ```
 
-Then drive it with the Docker CLI's `-H` flag to target the remote host — `ps`,
-`images`, `network`, `exec`, `run` all work:
+Use the Docker CLI's `-H` flag to target the remote host. Commands such as
+`ps`, `images`, `network`, `exec`, and `run` then use that daemon:
 
 ```bash
 docker -H tcp://<ip_address>:2375 ps
@@ -158,10 +162,10 @@ docker -H tcp://<ip_address>:2375 ps
 
 ### Abusing namespaces
 
-Sometimes a container shares a namespace with the host so the two can
-communicate. That can be abused with `nsenter`, which starts a process inside
-another process's namespace. If the container can see the host's `/sbin/init`
-(PID 1), you can launch a shell in its namespaces:
+If a container shares the host PID namespace, can access the host PID 1
+namespace files, and has the required capabilities, `nsenter` can start a
+process in selected host namespaces. Host PID visibility may require a setting
+such as `--pid=host`.
 
 ```bash
 nsenter --target 1 --mount --uts --ipc --net /bin/bash
@@ -169,30 +173,32 @@ nsenter --target 1 --mount --uts --ipc --net /bin/bash
 
 Each flag matters:
 
-1. `--target 1` aims at PID 1, the special system process, to gain root.
-2. `--mount` enters the target's mount namespace (its filesystem view).
-3. `--uts` shares the UTS namespace so the hostname matches — mismatched
-   hostnames cause connection issues.
-4. `--ipc` enters the IPC namespace, so shared memory works.
-5. `--net` enters the network namespace, so you can use the host's interfaces —
-   enough to open a stable reverse shell.
+1. `--target 1` selects PID 1 as the namespace source; it does not grant root.
+2. `--mount` enters the target's mount namespace, or filesystem view.
+3. `--uts` enters the target's hostname and domain-name namespace.
+4. `--ipc` enters the target's IPC namespace.
+5. `--net` enters the target's network namespace.
 
-`bash` then runs in the same namespaces and privileges as the kernel.
+The command does not enter PID 1's PID or user namespace, and the new shell
+keeps the caller's credentials. The caller also needs access to the relevant
+`/proc/1/ns/*` files and the capabilities required by `setns`. Joining the
+mount namespace needs `CAP_SYS_ADMIN` and `CAP_SYS_CHROOT`; joining the UTS,
+IPC, or network namespace needs `CAP_SYS_ADMIN` in the relevant owning user
+namespace.
 
 ## Container hardening
 
 <Callout variant="warning">
-  Privileged containers have full root access. Never reach for `--privileged`
-  when a specific capability will do.
+  `--privileged` grants broad host access. Avoid it when a narrower capability
+  or device permission is enough.
 </Callout>
 
 ### Protecting the Docker daemon
 
 Use secure communication and authentication to keep the daemon out of reach.
 
-**SSH.** Docker uses _contexts_ — think of them as profiles you can save and
-switch between for different hosts. You need SSH access to the remote host and an
-account there with permission to run Docker.
+**SSH.** Docker contexts save connection settings for different hosts. You
+still need SSH access to the remote host and an account that can run Docker.
 
 ```bash
 docker context create \
@@ -219,9 +225,9 @@ docker --tlsverify --tlscacert=myca.pem --tlscert=client-cert.pem --tlskey=clien
 ### Implementing control groups
 
 Control groups (cgroups) are a kernel feature that restricts and prioritizes how
-many system resources a process can use — good for stability and for tracking
-usage. Docker doesn't enable limits by default; set them when starting a
-container:
+many system resources a process can use. They help with stability and usage
+tracking. Docker does not set CPU or memory limits by default, so set them when
+starting a container:
 
 ```bash
 docker run -it --cpus="1" mycontainer
@@ -235,32 +241,39 @@ docker update --memory="40m" mycontainer
 docker inspect mycontainer
 ```
 
-<Callout>A resource limit of `0` means no limit has been set.</Callout>
+<Callout>
+  By default, no CPU or memory limit is set. Do not treat `0` as a universal
+  value: its meaning depends on the Docker option.
+</Callout>
+For more detail, see Docker's [cgroup metrics
+documentation](https://docs.docker.com/engine/containers/runmetrics/#control-groups).
 
 ### Preventing over-privileged containers
 
 Capabilities are a Linux feature that controls what a process can do at a
-granular level, so you can fine-tune privileges instead of handing over root. A
-few:
+granular level, so you can fine-tune privileges instead of handing over root.
+For example:
 
 - `CAP_NET_BIND_SERVICE` — bind to ports below 1024, which normally needs root.
 - `CAP_SYS_ADMIN` — a grab-bag of admin rights: mounting filesystems, changing
   network settings, rebooting.
 - `CAP_SYS_RESOURCE` — modify resource limits.
 
-Rather than `--privileged`, drop everything and add back only what a container
-needs. This gives a web server the ability to bind low ports and nothing else:
+Rather than `--privileged`, drop every capability and add back only what the
+container needs. This example adds only the ability to bind low ports:
 
 ```bash
 docker run -it --rm --cap-drop=ALL --cap-add=NET_BIND_SERVICE webserver
 ```
 
 Check what a process holds with `capsh --print`.
+See Docker's [Linux kernel capabilities documentation](https://docs.docker.com/engine/security/#linux-kernel-capabilities).
 
 ### Seccomp and AppArmor
 
-Two ways to restrict what a container can do — one enforced inside the app, one
-by the OS.
+Seccomp and AppArmor are kernel-enforced controls. Seccomp limits system calls,
+while AppArmor is a Mandatory Access Control system that limits actions such as
+file, capability, and network access.
 
 <Tabs
   items={[
@@ -271,10 +284,11 @@ by the OS.
         <>
           <p>
             <strong>Seccomp</strong> restricts the system calls an application
-            can make. You write a list of rules — allow <code>read</code>, deny{' '}
-            <code>execve</code> — which shrinks what an attacker can do while
-            keeping the app working. A profile for a web server that can read
-            and write files but not execute anything:
+            can make. You write a list of rules, such as allowing{' '}
+            <code>read</code>
+            and denying <code>execve</code>, to shrink what an attacker can do
+            while keeping the app working. A profile for a web server that can
+            read and write files but not execute anything:
           </p>
           <CodeBlock code={seccompProfile} lang="json" />
           <p>Apply it at runtime:</p>
@@ -282,6 +296,17 @@ by the OS.
             code="docker run --rm -it --security-opt seccomp=/path/to/profile.json mycontainer"
             lang="bash"
           />
+          <p>
+            Read more in the{' '}
+            <a href="https://man7.org/linux/man-pages/man2/seccomp.2.html">
+              seccomp(2)
+            </a>{' '}
+            manual and Docker's{' '}
+            <a href="https://docs.docker.com/engine/security/seccomp/">
+              Seccomp documentation
+            </a>
+            .
+          </p>
         </>
       ),
     },
@@ -291,21 +316,30 @@ by the OS.
       content: (
         <>
           <p>
-            <strong>AppArmor</strong> does something similar, but from the OS
-            side rather than inside the app — it's a Mandatory Access Control
-            system that decides what a process may do from a set of rules
-            enforced at the OS level. This profile lets an Apache container read
-            from <code>/var/www</code>, read and write its logs, bind TCP port
-            80, and nothing else:
+            <strong>AppArmor</strong> limits file, capability, and network
+            access through rules enforced by the Linux kernel. The sample below
+            illustrates AppArmor rule syntax. It does not limit TCP access to
+            port 80 or provide a complete, tested Apache-container policy:
           </p>
           <CodeBlock code={apparmorProfile} lang="text" />
           <p>
-            Confirm AppArmor is installed with <code>sudo aa-status</code>, load
-            the profile, then run the container with it:
+            See the{' '}
+            <a href="https://gitlab.com/apparmor/apparmor/-/wikis/Documentation">
+              AppArmor documentation
+            </a>{' '}
+            and Docker's{' '}
+            <a href="https://docs.docker.com/engine/security/apparmor/">
+              AppArmor documentation
+            </a>
+            .
+          </p>
+          <p>
+            Confirm AppArmor is installed with <code>sudo aa-status</code>, then
+            load the named profile and run the container with it:
           </p>
           <CodeBlock
             code={
-              'sudo apparmor_parser -r -W /path/to/profile.json\ndocker run --rm -it --security-opt apparmor=/path/to/profile.json mycontainer'
+              'sudo apparmor_parser -r -W /etc/apparmor.d/containers/docker-apache\ndocker run --rm -it --security-opt apparmor=docker-apache mycontainer'
             }
             lang="bash"
           />
@@ -375,5 +409,3 @@ docker scout cves local://nginx:latest
 grype imagename --scope all-layers
 grype /path/to/image.tar   # a filesystem exported with `docker image save`
 ```
-
-Isolation is a set of switches, not a default. Flip them on deliberately.

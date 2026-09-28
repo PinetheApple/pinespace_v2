@@ -5,128 +5,93 @@ date: 2024-10-14
 tags: [Security, CTF]
 ---
 
-A few of the challenges I solved at the Huntress CTF 2024. None of these are
-hard, but each has a clean trick worth remembering.
-
 ## Matryoshka QR
 
-The challenge hands you a QR code. Scan it and you don't get a flag — you get the
-bytes of a PNG (the `\x89PNG` header gives it away), which is itself another QR
-code. Save the bytes, open the image, scan the smaller code inside for the flag.
+Warmups
 
-<Figure
-  src="/blog/matryoshka-qr/02.png"
-  alt="The QR code supplied by the challenge"
-  caption="qrcode.png — scanning it yields PNG bytes, not a flag"
-/>
+<Figure src="/blog/matryoshka-qr/01.png" alt="" />
 
-<Figure
-  src="/blog/matryoshka-qr/03.png"
-  alt="The smaller QR code hidden inside"
-  caption="inner_qrcode.png — the nested code that holds the flag"
-/>
+As a part of this challenge, we are given a QR code. Scanning the code gives us the data for a PNG image (as indicated by the `\x89PNG` at the start), which is just another QR code. Save the data as bytes into another PNG file and view it using an image viewer of your choice. Finally, scan the smaller QR code to get the challenge flag.
 
-You can do the extraction by hand, but Python makes it tidy:
+<Figure src="/blog/matryoshka-qr/02.png" alt="" caption="qrcode.png" />
+
+I did this using Python (which probably wasn't required). But here's the code for that -
 
 ```python
 from PIL import Image
 import io
 
-inner_data = b"\x89PNG\r\n\x1a\n..."  # the bytes decoded from the outer QR
+inner_data = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00'\x00\x00\x00'\x01\x00\x00\x00\x00\xa4\xd8l\x98\x00\x00\x00\xf5IDATx\x9c\x01\xea\x00\x15\xff\x01\xff\x00\x00\x00\xff\x00\x80\xa2\xd9\x1a\x02\x00\xbe\xe6T~\xfa\x04\xe4\xff\x0fh\x90\x02\x00\x1a\x7f\xdc\x00\x02\x00\xde\x01H\x00\x00\xbe\xd5\x95J\xfa\x04\xc2*\x15`\x08\x00\xff\x9d.\x9f\xfe\x04\xfd#P\xc3\x0b\x02\x97\x0e:\x07d\x04/vIg\x19\x00\xbb\xcd\xf3-\xd2\x02\xfb\xd6d\xb5\x88\x02E\xc7^\xdf\xfc\x00\x84\xfb\x13\xf3J\x02\xfd\x88a\xefD\x00\xc8t$\x90\n\x01\xc7\x01\xee1\xf7\x043Q\x17\x0cH\x01\xa5\x03\x1c6d\x02\r\xf0\xbfV$\x00\xcf\x13d3\x06\x01\xee\x08J\xf5E\x00\x9b\xee\n\xac\xfa\x01\xea|\xf2\xe86\x04\xb3\xc9\x84\xf7\xb4\x02\t\x90U%\x14\x00\xbf g\xa5\xee\x02\xfbH\xf1#4\x00\xff\xa1!;\x86\x02\x81VB\xdf\xfc\x04>\xb1s\x00\x10\x02\xe4>\xab-p\x00\xa2\xc6\xfe\xf6\xee\x04\x00\x05\xcbl5\x02\x1c\xfc\x85;\xd0\x02\xc2\xfb\xe6A\x00\x01\xff\x00\x00\x00\xff\xf9\xdb_g\xf4\x9a\xddH\x00\x00\x00\x00IEND\xaeB`\x82"
 inner_image = Image.open(io.BytesIO(inner_data))
 inner_image.save('inner_qrcode.png')
 ```
 
+<Figure src="/blog/matryoshka-qr/03.png" alt="" caption="inner_qrcode.png" />
+
 ## Cattle
 
-The attached file is a wall of `m`s and `o`s. Searched around and it turned out
-to be [COW](https://bigzaphod.github.io/COW/), an esoteric language whose entire
-instruction set is variations on "moo." An
-[online COW interpreter](https://www.cachesleuth.com/cow.html) runs it and prints
-the flag.
+Warmups
 
-<Figure
-  src="/blog/cattle/02.png"
-  alt="The COW source code"
-  caption="The 'code' — MOO, moO, mOo and friends"
-/>
+<Figure src="/blog/cattle/01.png" alt="" />
+
+The file attached to the challenge is a text file containing what would appear to be random combinations of m's and o's.
+
+<Figure src="/blog/cattle/02.png" alt="" caption={'The "code"'} />
+
+After a bit of looking around online, I managed to find out that it was actually code in "COW", a programming language. You can learn more about it at - [https://bigzaphod.github.io/COW/](https://bigzaphod.github.io/COW/).
+
+There happens to be an online tool to decrypt the language. Using this tool, we can get the flag to the challenge.
+
+[https://www.cachesleuth.com/cow.html](https://www.cachesleuth.com/cow.html)
 
 ## Whamazon
 
-A little shop where the flag costs $10,000,000,000 and you start with $50. Easy
-to overthink.
+Warmups
 
-<Figure
-  src="/blog/whamazon/02.png"
-  alt="The Whamazon shop menu with a $50 balance"
-  caption="$50 to spend; the flag is item 7"
-/>
+<Figure src="/blog/whamazon/01.png" alt="" />
 
-The store multiplies quantity by unit price and subtracts that from your
-balance — but it never checks that the quantity is positive.
+This challenge is rather simple, but it's quite easy to overthink it. All we have to do is buy the flag from "Whamazon". The only issue is that the flag costs $10000000000 but we only have $50 to start with. So currently, with the money we have, we can't buy the flag nor the house (not that we need the house).
 
-<Figure
-  src="/blog/whamazon/04.png"
-  alt="Buying one apple for three dollars"
-  caption="Cost = quantity × price, subtracted from the wallet"
-/>
+<Figure src="/blog/whamazon/02.png" alt="" />
 
-Buy a **negative** number of something and the subtraction becomes an addition.
-Your balance balloons.
+<Figure src="/blog/whamazon/03.png" alt="" />
 
-<Figure
-  src="/blog/whamazon/05.png"
-  alt="Buying a negative quantity of video games to inflate the balance"
-  caption="−5×10²¹ video games later, the wallet is very full"
-/>
+May as well buy an apple with what we have right now. Since it's only $3, we'll be left with $47.
 
-Now the flag is affordable, and it's waiting in your inventory.
+<Figure src="/blog/whamazon/04.png" alt="" />
 
-<Figure
-  src="/blog/whamazon/07.png"
-  alt="The inventory listing showing the flag"
-  caption="The flag, bought and paid for"
-/>
+It looks like the store is simply multiplying the amount that we specified with the cost of an item and subtracting that "cost" from the current balance. But it might not be checking the quantity that is being specified. What if we buy a negative amount of things (say, video games in this case)?
+
+<Figure src="/blog/whamazon/05.png" alt="" />
+
+Well, that wasn't so hard! With the money that we now have, we can easily buy a flag (or two).
+
+<Figure src="/blog/whamazon/06.png" alt="" />
+
+Now, all that's left is to check the inventory for the flag.
+
+<Figure src="/blog/whamazon/07.png" alt="" />
 
 ## Finder's Fee
 
-SSH in and `user` can't read `finder`'s home directory.
+Warmups
 
-<Figure
-  src="/blog/finders-fee/02.png"
-  alt="Listing /home shows finder's directory is unreadable"
-  caption="Permission denied on /home/finder"
-/>
+<Figure src="/blog/finders-fee/01.png" alt="" />
 
-But `/bin` links to `/usr/bin`, and there the `find` binary has its
-[SGID bit set](https://linuxconfig.org/how-to-use-special-permissions-the-setuid-setgid-and-sticky-bits)
-(`rwxr-sr-x root finder`) — so `find` runs with the `finder` group's permissions.
+The name and description of the challenge is a pretty big giveaway as to what you have to do to get the flag. Once we log onto the server using ssh, we can use the `ls` command to list the files/directories present in `/home`. `user` does not have permissions to read the contents of `finder`'s home directory.
 
-<Figure
-  src="/blog/finders-fee/04.png"
-  alt="The find binary with its SGID bit set to the finder group"
-  caption="find is SGID finder"
-/>
+<Figure src="/blog/finders-fee/02.png" alt="" />
 
-`find` will happily list a directory you couldn't otherwise read:
+Checking `/bin`, we see that it links to `/usr/bin`. Listing out the files, the `find` binary stands out as it has it's [SGID](https://linuxconfig.org/how-to-use-special-permissions-the-setuid-setgid-and-sticky-bits) bit set. This allows us to run the `find` command as though we were in the `finder` group.
 
-<Figure
-  src="/blog/finders-fee/05.png"
-  alt="Using find to list the contents of finder's home directory"
-  caption="flag.txt, now visible"
-/>
+<Figure src="/blog/finders-fee/03.png" alt="" />
 
-Its `-exec` flag then runs a command per result:
+<Figure src="/blog/finders-fee/04.png" alt="" />
 
-```bash
-find /home/finder/ -name flag.txt -exec cat {} \;
-```
+We can use the `find` command to list out the files present in `finder`'s home directory, something that we did not have the permission to do previously.
 
-<Figure
-  src="/blog/finders-fee/06.png"
-  alt="find -exec cat printing the flag"
-  caption="-exec cat runs as the finder group and prints the flag"
-/>
+<Figure src="/blog/finders-fee/05.png" alt="" />
 
-Any SGID/SUID binary that can read files or spawn processes is a
-privilege-escalation primitive — `find` is one of the friendliest.
+We can specify the `-exec` flag to execute a command based on the result of the search. The command we will be using in this case is `cat` to print out the flag.
+
+<Figure src="/blog/finders-fee/06.png" alt="" />
