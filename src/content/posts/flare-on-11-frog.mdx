@@ -1,46 +1,50 @@
 ---
-title: 'Frog'
+title: 'Flare-On 11: Frog'
 excerpt: When a maze has no solution, read the source and call the function that generates the answer.
 date: 2024-10-20
 tags: [Security, CTF, Reversing]
 ---
 
-<Figure src="/blog/frog/01.png" alt="" caption="The game" />
+Frog is the opening challenge of Flare-On 11 (2024): a small Python game where
+you steer a frog to a statue. The catch is that there is no actual path from
+start to finish. Since you have the source, there are two ways through.
 
-The aim of this challenge is to get the frog to the statue. The only problem is that there is no actual path from the starting point to the statue. However, since we have access to the source code, we could make modifications to it to allow us to get to the end point. Or, we could just print out the flag without even playing the game.
+<Figure
+  src="/blog/frog/01.png"
+  alt="The Frog game: a frog on a grid, blocked from reaching the statue"
+  caption="No path from the frog to the statue"
+/>
 
-1. Creating a path to the statue
+## Option 1: build a path
 
-   The blocks that make up the "maze" are defined near the end of the program. By just removing some of these "blocks" from the list we can open a path for the frog.
+The maze blocks are defined near the end of the program. Delete a few from the
+list and you open a corridor the frog can hop through.
 
-   ```python
-   def BuildBlocks():
-       blockset = [
-           Block(3, 2, False),
-           Block(4, 2, False),
-           Block(5, 2, False),
-           Block(6, 2, False),
-           Block(7, 2, False),
-           Block(8, 2, False),
-           Block(9, 2, False),
-           Block(10, 2, False),
-           Block(11, 2, False),
-           Block(12, 2, False),
-   ...
-   ```
+```python
+def BuildBlocks():
+    blockset = [
+        Block(3, 2, False),
+        Block(4, 2, False),
+        Block(5, 2, False),
+        # remove some of these to clear a path
+        ...
+    ]
+```
 
-2. Print out the flag without playing the game
+## Option 2: skip the game entirely
 
-   The `GenerateFlagText()` function is what contains the encoded flag. The function is called in an if condition -
+The flag lives in `GenerateFlagText()`, which only gets called once the player
+reaches the statue:
 
-   ```python
-   if player.x == victory_tile.x and player.y == victory_tile.y:
-       victory_mode = True
-       flag_text = GenerateFlagText(player.x, player.y)
-   ```
+```python
+if player.x == victory_tile.x and player.y == victory_tile.y:
+    victory_mode = True
+    flag_text = GenerateFlagText(player.x, player.y)
+```
 
-   This function can be called even when the player has not reached the statue. We just have to change the arguments passed to the function to `victory_tile.x` and `victory_tile.y`.
+You can call it directly with the victory tile's coordinates. The frog does not
+need to move:
 
-   ```python
-   flag_text = GenerateFlagText(int(victory_tile.x), int(victory_tile.y))
-   ```
+```python
+flag_text = GenerateFlagText(int(victory_tile.x), int(victory_tile.y))
+```
